@@ -21,7 +21,7 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (isPlaceholder) {
-      router.push('/dashboard')
+      router.push('/admin/dashboard')
       return
     }
     setLoading(true)
@@ -30,7 +30,7 @@ export default function LoginPage() {
     if (error) {
       setError('אימייל או סיסמה שגויים. אנא נסה שוב.')
     } else {
-      router.push('/dashboard')
+      router.push('/admin/dashboard')
       router.refresh()
     }
     setLoading(false)

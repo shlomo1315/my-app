@@ -18,15 +18,15 @@ import {
 import { useState } from 'react'
 
 const navItems = [
-  { href: '/dashboard', label: 'לוח בקרה', icon: LayoutDashboard },
-  { href: '/beneficiaries', label: 'נתמכים', icon: Users },
-  { href: '/families', label: 'משפחות', icon: Home },
-  { href: '/genealogy', label: 'יוחסין', icon: GitBranch },
-  { href: '/maternity', label: 'יולדות', icon: Baby },
-  { href: '/loans', label: 'הלוואות', icon: CreditCard },
-  { href: '/distributions', label: 'חלוקות', icon: Gift },
-  { href: '/reports', label: 'דוחות', icon: BarChart3 },
-  { href: '/settings', label: 'הגדרות', icon: Settings },
+  { href: '/admin/dashboard', label: 'לוח בקרה', icon: LayoutDashboard },
+  { href: '/admin/beneficiaries', label: 'נתמכים', icon: Users },
+  { href: '/admin/families', label: 'משפחות', icon: Home },
+  { href: '/admin/genealogy', label: 'יוחסין', icon: GitBranch },
+  { href: '/admin/maternity', label: 'יולדות', icon: Baby },
+  { href: '/admin/loans', label: 'הלוואות', icon: CreditCard },
+  { href: '/admin/distributions', label: 'חלוקות', icon: Gift },
+  { href: '/admin/reports', label: 'דוחות', icon: BarChart3 },
+  { href: '/admin/settings', label: 'הגדרות', icon: Settings },
 ]
 
 export default function Sidebar() {
@@ -48,8 +48,8 @@ export default function Sidebar() {
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active =
-            href === '/dashboard'
-              ? pathname === '/dashboard'
+            href === '/admin/dashboard'
+              ? pathname === '/admin/dashboard'
               : pathname.startsWith(href)
 
           return (

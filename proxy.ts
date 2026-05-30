@@ -7,11 +7,11 @@ export async function proxy(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const isConfigured = supabaseUrl && supabaseUrl !== 'https://placeholder.supabase.co'
 
+  const isAdminRoute = request.nextUrl.pathname.startsWith('/admin')
+  const isLoginPage = request.nextUrl.pathname === '/login'
+
   if (!isConfigured) {
     // Dev mode: allow all routes, just protect against login loops
-    if (request.nextUrl.pathname === '/') {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
     return response
   }
 
@@ -38,19 +38,12 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const isLoginPage = request.nextUrl.pathname === '/login'
-  const isPublic = request.nextUrl.pathname === '/'
-
-  if (isPublic) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
-
-  if (!user && !isLoginPage) {
+  if (isAdminRoute && !user) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
   if (user && isLoginPage) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    return NextResponse.redirect(new URL('/admin/dashboard', request.url))
   }
 
   return response
