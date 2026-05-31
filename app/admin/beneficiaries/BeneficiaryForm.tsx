@@ -191,6 +191,8 @@ function DocTypeField({
   error,
   onDocType,
   onValue,
+  onBlur,
+  checking,
 }: {
   label: string
   required?: boolean
@@ -199,6 +201,8 @@ function DocTypeField({
   error?: string
   onDocType: (t: 'id' | 'passport') => void
   onValue: (v: string) => void
+  onBlur?: () => void
+  checking?: boolean
 }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -232,12 +236,14 @@ function DocTypeField({
       <FInput
         value={value}
         onChange={e => onValue(e.target.value)}
+        onBlur={onBlur}
         placeholder={docType === 'id' ? '123456789' : 'מספר דרכון'}
         dir="ltr"
         inputMode={docType === 'id' ? 'numeric' : 'text'}
         maxLength={docType === 'id' ? 9 : 20}
         required={required}
       />
+      {checking && <p className="text-xs text-slate-400">בודק אם תעודת הזהות כבר קיימת...</p>}
       {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
   )
@@ -309,6 +315,31 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
     Array.isArray(defaultValues?.children) ? defaultValues!.children : []
   )
   const [childErrors, setChildErrors] = useState<Partial<Record<keyof ChildEntry, string>>[]>([])
+  const [checkingId, setCheckingId] = useState(false)
+
+  // בדיקת כפילות תעודת זהות בזמן אמת (כשעוזבים את השדה)
+  const checkDuplicateId = useCallback(async () => {
+    const raw = form.id_number.trim()
+    if (!raw) return
+    const normalized = form.id_doc_type === 'id' ? raw.replace(/\D/g, '') : raw
+    if (!normalized) return
+    setCheckingId(true)
+    try {
+      let q = supabase.from('beneficiaries').select('id, full_name, family_name').eq('id_number', normalized)
+      if (isEdit && beneficiaryId) q = q.neq('id', beneficiaryId)
+      const { data } = await q.maybeSingle()
+      if (data) {
+        const who = [data.family_name, data.full_name].filter(Boolean).join(' ')
+        setErrors(prev => ({ ...prev, id_number: `תעודת זהות זו כבר קיימת במערכת${who ? ` (${who})` : ''} — לא ניתן לרשום אותה שוב` }))
+      } else {
+        setErrors(prev => {
+          if (!prev.id_number?.includes('כבר קיימת')) return prev
+          const next = { ...prev }; delete next.id_number; return next
+        })
+      }
+    } catch { /* שגיאת רשת — נבדוק שוב בשמירה */ }
+    setCheckingId(false)
+  }, [form.id_number, form.id_doc_type, isEdit, beneficiaryId, supabase])
 
   const set = (k: keyof FormState) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -392,9 +423,22 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
     if (!validate()) return
     setSaving(true)
     try {
+      const normalizedId = form.id_doc_type === 'id' ? form.id_number.replace(/\D/g, '') : form.id_number.trim()
+
+      // בדיקת כפילות תעודת זהות — לא ניתן לרשום ת.ז. שכבר קיימת בכרטסת אחרת
+      let dupQuery = supabase.from('beneficiaries').select('id').eq('id_number', normalizedId)
+      if (isEdit && beneficiaryId) dupQuery = dupQuery.neq('id', beneficiaryId)
+      const { data: dup } = await dupQuery.maybeSingle()
+      if (dup) {
+        setErrors(prev => ({ ...prev, id_number: 'תעודת זהות זו כבר קיימת במערכת — לא ניתן לרשום אותה שוב' }))
+        setSaving(false)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        return
+      }
+
       const payload = {
         family_name: form.family_name.trim(),
-        id_number: form.id_doc_type === 'id' ? form.id_number.replace(/\D/g, '') : form.id_number.trim(),
+        id_number: normalizedId,
         id_doc_type: form.id_doc_type,
         full_name: form.full_name.trim(),
         phone: form.phone || null,
@@ -509,6 +553,8 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
               docType={form.id_doc_type}
               value={form.id_number}
               error={errors.id_number}
+              checking={checkingId}
+              onBlur={checkDuplicateId}
               onDocType={t => setForm(f => ({ ...f, id_doc_type: t }))}
               onValue={v => setForm(f => ({ ...f, id_number: v }))}
             />
@@ -540,6 +586,8 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
                 docType={form.id_doc_type}
                 value={form.id_number}
                 error={errors.id_number}
+                checking={checkingId}
+                onBlur={checkDuplicateId}
                 onDocType={t => setForm(f => ({ ...f, id_doc_type: t }))}
                 onValue={v => setForm(f => ({ ...f, id_number: v }))}
               />

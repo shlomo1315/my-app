@@ -178,17 +178,29 @@ export default function NewMaternityPage() {
 
         {mother && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-sm font-semibold text-green-800">
-                <Check size={15} /> נמצאה — {[mother.family_name, mother.full_name].filter(Boolean).join(' ')}
-              </span>
+            <div className="flex items-start justify-between">
+              <div className="flex items-start gap-2">
+                <Check size={15} className="text-green-700 mt-0.5 flex-shrink-0" />
+                <div className="flex flex-col">
+                  {/* כותרת = שם האישה (היולדת). אם אין spouse_name נופלים לשם הרשומה */}
+                  <span className="text-sm font-semibold text-green-800">
+                    {mother.spouse_name
+                      ? `${[mother.family_name].filter(Boolean).join(' ')} ${mother.spouse_name}`.trim()
+                      : [mother.family_name, mother.full_name].filter(Boolean).join(' ')}
+                  </span>
+                  {mother.spouse_name && (
+                    <span className="text-xs text-green-600/80 mt-0.5">
+                      בן זוג: {[mother.family_name, mother.full_name].filter(Boolean).join(' ')}
+                    </span>
+                  )}
+                </div>
+              </div>
               <button onClick={() => { setMother(null); setIdInput('') }} className="text-slate-400 hover:text-slate-600"><X size={15} /></button>
             </div>
             <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-green-700 mt-1">
               <span>ת.ז.: <span className="ltr-num font-mono">{mother.id_number}</span></span>
               {mother.phone && <span>טלפון: <span className="ltr-num">{mother.phone}</span></span>}
               {mother.city && <span>עיר: {mother.city}</span>}
-              {mother.spouse_name && <span>בן/בת זוג: {mother.spouse_name}</span>}
             </div>
             {statusWarning && (
               <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-1">
