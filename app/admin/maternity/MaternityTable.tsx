@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Clock, Check, X, Baby, Eye, ChevronDown, Loader2 } from 'lucide-react'
+import { Clock, Check, X, Baby, Eye, ChevronDown, Loader2, Search } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { format } from 'date-fns'
 import { he } from 'date-fns/locale'
@@ -146,9 +146,25 @@ async function addBabyToFamily(supabase: ReturnType<typeof createClient>, aid: M
     .eq('id', mother.id)
 }
 
+// טקסט חיפוש לכל רשומה — מאחד את כל השדות המוצגים בטבלה לחיפוש חופשי
+const searchHaystack = (a: MaternityAid) => {
+  const m = a.beneficiary as MotherRef | undefined
+  return [
+    motherName(m),
+    m?.spouse_id_number,
+    a.baby_name,
+    a.baby_id_number,
+    formatDate(a.birth_date),
+    a.recovery_home,
+    a.card_number,
+    STATUS_PILL[a.status]?.label,
+  ].filter(Boolean).join(' ').toLowerCase()
+}
+
 // ── Main table ──────────────────────────────────────────────────────────────────
 export default function MaternityTable({ data }: { data: MaternityAid[] }) {
   const [filter, setFilter] = useState<Filter>('all')
+  const [query, setQuery] = useState('')
 
   const counts = useMemo(() => ({
     all: data.length,
@@ -157,7 +173,12 @@ export default function MaternityTable({ data }: { data: MaternityAid[] }) {
     cancelled: data.filter(a => a.status === 'cancelled').length,
   }), [data])
 
-  const filtered = useMemo(() => data.filter(a => matchesFilter(a, filter)), [data, filter])
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return data.filter(a =>
+      matchesFilter(a, filter) && (q === '' || searchHaystack(a).includes(q))
+    )
+  }, [data, filter, query])
 
   return (
     <div className="flex flex-col gap-5">
@@ -184,33 +205,44 @@ export default function MaternityTable({ data }: { data: MaternityAid[] }) {
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-        <div className="px-5 py-3 border-b border-slate-200">
+        <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between gap-3 flex-wrap">
           <h2 className="text-sm font-semibold text-slate-700">רשימת תיקים</h2>
+          <div className="relative w-full sm:w-72">
+            <Search size={15} className="absolute top-1/2 -translate-y-1/2 right-3 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="חיפוש חופשי…"
+              className="w-full pr-9 pl-3 py-2 text-sm rounded-lg border border-slate-200 bg-slate-50 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 transition-colors"
+            />
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-right">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
-                {['שם היולדת', 'ת.ז. האישה', 'שם התינוק', 'תאריך לידה', 'בית החלמה', 'כרטיס נדרים', 'סטטוס', 'פעולות'].map(h => (
-                  <th key={h} className="px-4 py-3 text-xs font-semibold text-slate-500 whitespace-nowrap">{h}</th>
+                {['שם היולדת', 'ת.ז. האישה', 'שם התינוק', 'ת.ז. התינוק', 'תאריך לידה', 'בית החלמה', 'כרטיס נדרים', 'סטטוס', 'פעולות'].map(h => (
+                  <th key={h} className="px-4 py-3 text-xs font-semibold text-slate-500 whitespace-nowrap align-middle">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-12 text-center text-slate-400">לא נמצאו תיקים בסינון זה</td></tr>
+                <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-400">לא נמצאו תיקים בסינון זה</td></tr>
               ) : filtered.map(aid => {
                 const m = aid.beneficiary as MotherRef | undefined
                 return (
                   <tr key={aid.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">{motherName(m)}</td>
-                    <td className="px-4 py-3 ltr-num text-xs font-mono text-slate-600">{m?.spouse_id_number ?? '—'}</td>
-                    <td className="px-4 py-3 text-slate-700">{aid.baby_name ?? <span className="text-slate-300">—</span>}</td>
-                    <td className="px-4 py-3 ltr-num text-slate-600">{formatDate(aid.birth_date)}</td>
-                    <td className="px-4 py-3 text-slate-600">{aid.recovery_home ?? '—'}</td>
-                    <td className="px-4 py-3 ltr-num text-xs font-mono text-slate-600">{aid.card_number ?? '—'}</td>
-                    <td className="px-4 py-3"><StatusControl aid={aid} /></td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 align-middle font-medium text-slate-800 whitespace-nowrap">{motherName(m)}</td>
+                    <td className="px-4 py-3 align-middle text-xs font-mono text-slate-600"><span className="ltr-num">{m?.spouse_id_number ?? '—'}</span></td>
+                    <td className="px-4 py-3 align-middle text-slate-700">{aid.baby_name ?? <span className="text-slate-300">—</span>}</td>
+                    <td className="px-4 py-3 align-middle text-xs font-mono text-slate-600"><span className="ltr-num">{aid.baby_id_number ?? '—'}</span></td>
+                    <td className="px-4 py-3 align-middle text-slate-600"><span className="ltr-num">{formatDate(aid.birth_date)}</span></td>
+                    <td className="px-4 py-3 align-middle text-slate-600">{aid.recovery_home ?? '—'}</td>
+                    <td className="px-4 py-3 align-middle text-xs font-mono text-slate-600"><span className="ltr-num">{aid.card_number ?? '—'}</span></td>
+                    <td className="px-4 py-3 align-middle"><StatusControl aid={aid} /></td>
+                    <td className="px-4 py-3 align-middle">
                       <Link href={`/admin/maternity/${aid.id}`}
                         className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors">
                         <Eye size={14} /> צפייה
