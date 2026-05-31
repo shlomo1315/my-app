@@ -39,6 +39,9 @@ export interface Beneficiary {
   gender?: Gender
   family_id?: string
   marital_status?: string
+  spouse_name?: string
+  spouse_id_number?: string
+  lineage_node_id?: string
   children_count: number
   eligibility_status: EligibilityStatus
   is_active: boolean

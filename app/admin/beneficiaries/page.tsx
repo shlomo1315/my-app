@@ -12,7 +12,7 @@ async function getBeneficiaries(): Promise<Beneficiary[]> {
     const supabase = await createClient()
     const { data } = await supabase
       .from('beneficiaries')
-      .select('*, family:families(family_name)')
+      .select('*')
       .order('created_at', { ascending: false })
     return data ?? []
   } catch {
