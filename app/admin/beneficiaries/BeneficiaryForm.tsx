@@ -395,6 +395,23 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
   const setChild = <K extends keyof ChildEntry>(idx: number, key: K, value: ChildEntry[K]) =>
     setChildren(prev => prev.map((c, i) => (i === idx ? { ...c, [key]: value } : c)))
 
+  // אישור לידה מתוך עריכת המשפחה — מסנכרן את תיק היולדת ל"מאושר" ומסמן את הילד
+  const [approvingIdx, setApprovingIdx] = useState<number | null>(null)
+  const approveBirth = async (idx: number) => {
+    const child = children[idx]
+    if (!child.maternity_aid_id) return
+    setApprovingIdx(idx)
+    try {
+      const { error } = await supabase.from('maternity_aids').update({ status: 'active' }).eq('id', child.maternity_aid_id)
+      if (error) throw error
+      setChild(idx, 'birth_status', 'approved')
+    } catch (e) {
+      alert(`שגיאה באישור הלידה: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setApprovingIdx(null)
+    }
+  }
+
   // Derived flags
   const hasMaritalStatus = !!form.marital_status              // personal details appear only after a status is chosen
   const primaryIsWife = WIFE_PRIMARY_STATUSES.includes(form.marital_status)
@@ -701,7 +718,21 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
           <div className="flex flex-col gap-4">
             {children.map((child, idx) => (
               <div key={idx} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-semibold text-indigo-600 mb-3">ילד/ה {idx + 1}</p>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <p className="text-xs font-semibold text-indigo-600">ילד/ה {idx + 1}</p>
+                  {child.birth_status === 'approved' && (
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-800">לידה מאושרת</span>
+                  )}
+                  {child.birth_status === 'pending' && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">ממתין לאישור לידה</span>
+                      <button type="button" onClick={() => approveBirth(idx)} disabled={approvingIdx === idx}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-60 px-2.5 py-1 rounded-lg transition-colors">
+                        {approvingIdx === idx ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />} אשר לידה
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="שם הילד/ה" required error={childErrors[idx]?.name}>
                     <FInput

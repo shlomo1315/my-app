@@ -1,5 +1,6 @@
 'use client'
 import { useState, type ReactNode } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 export interface TabDef {
   key: string
@@ -17,9 +18,22 @@ const ACCENTS: Record<string, { active: string; idle: string }> = {
   sky:     { active: 'bg-sky-600 text-white border-sky-600',         idle: 'bg-sky-50 text-sky-700 border-sky-100 hover:bg-sky-100' },
 }
 
-export default function Tabs({ tabs }: { tabs: TabDef[] }) {
-  const [active, setActive] = useState(tabs[0]?.key)
+export default function Tabs({ tabs, param = 'tab' }: { tabs: TabDef[]; param?: string }) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  // הלשונית הפעילה נשמרת ב-URL (?tab=) כדי שחזרה אחורה תחזיר לאותה לשונית
+  const fromUrl = searchParams.get(param)
+  const [active, setActive] = useState(tabs.find(t => t.key === fromUrl)?.key ?? tabs[0]?.key)
   const current = tabs.find(t => t.key === active) ?? tabs[0]
+
+  const select = (key: string) => {
+    setActive(key)
+    const sp = new URLSearchParams(searchParams.toString())
+    sp.set(param, key)
+    router.replace(`${pathname}?${sp.toString()}`, { scroll: false })
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-2">
@@ -27,7 +41,7 @@ export default function Tabs({ tabs }: { tabs: TabDef[] }) {
           const a = ACCENTS[t.accent ?? 'indigo']
           const isActive = t.key === active
           return (
-            <button key={t.key} onClick={() => setActive(t.key)}
+            <button key={t.key} onClick={() => select(t.key)}
               className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium border transition-colors ${isActive ? a.active : a.idle}`}>
               {t.icon}{t.label}
             </button>
