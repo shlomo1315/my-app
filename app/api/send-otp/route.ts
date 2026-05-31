@@ -22,9 +22,15 @@ export async function POST(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
+  const origin = new URL(request.url).origin
+  const emailRedirectTo = `${origin}/auth/callback?next=register`
+
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { shouldCreateUser: true },
+    options: {
+      shouldCreateUser: true,
+      emailRedirectTo,
+    },
   })
 
   if (error) {

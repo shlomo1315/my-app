@@ -290,6 +290,33 @@ export default function PublicRegistrationPage() {
   } | null>(null)
   const otpRefs = useRef<(HTMLInputElement | null)[]>([])
 
+  // Handle redirect from magic link (auth/callback?next=register)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('verified') !== 'true') return
+
+    const emailParam = params.get('email') ?? ''
+    if (emailParam) setEmail(emailParam)
+
+    if (params.get('already') === 'true') {
+      setExistingBeneficiary({
+        full_name: params.get('name') ?? '',
+        eligibility_status: params.get('status') ?? 'pending',
+        created_at: params.get('reg_date') ?? new Date().toISOString(),
+      })
+      setStep('already-registered')
+    } else {
+      const nonceParam = params.get('nonce') ?? ''
+      if (nonceParam) {
+        setNonce(nonceParam)
+        setStep('form')
+      }
+    }
+
+    // Clean URL without reload
+    window.history.replaceState({}, '', '/')
+  }, [])
+
   // Lineage state
   const [lineageNodeId, setLineageNodeId] = useState('')
   const [lineagePath, setLineagePath] = useState<string[]>([])
@@ -495,9 +522,9 @@ export default function PublicRegistrationPage() {
                 <KeyRound size={20} className="text-indigo-600" />
               </div>
               <div>
-                <h2 className="font-semibold text-slate-900">הזן קוד אימות</h2>
+                <h2 className="font-semibold text-slate-900">אמת את האימייל שלך</h2>
                 <p className="text-sm text-slate-500">
-                  שלחנו קוד בן 6 ספרות אל{' '}
+                  שלחנו מייל אל{' '}
                   <span className="font-medium text-slate-700" dir="ltr">
                     {email}
                   </span>
@@ -521,9 +548,14 @@ export default function PublicRegistrationPage() {
                   />
                 ))}
               </div>
+              <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 text-sm text-indigo-800">
+                <p className="font-medium mb-1">שתי אפשרויות לאימות:</p>
+                <p>• לחץ על הקישור במייל — יעביר אותך ישר לטופס</p>
+                <p>• או הזן את קוד 6 הספרות מהמייל למעלה</p>
+              </div>
               <div className="flex items-center gap-2 text-xs text-slate-500 bg-amber-50 rounded-lg px-3 py-2 border border-amber-100">
                 <Clock size={13} />
-                <span>הקוד בתוקף ל-10 דקות. בדוק גם בתיקיית ספאם.</span>
+                <span>הקוד / הקישור בתוקף ל-10 דקות. בדוק גם בתיקיית ספאם.</span>
               </div>
               {error && <ErrorBox message={error} />}
               <button
