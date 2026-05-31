@@ -44,13 +44,24 @@ export default function NewMaternityPage() {
     if (!idInput.trim()) return
     setLooking(true); setLookupError(''); setMother(null)
     try {
+      const raw = idInput.trim()
+      const digits = raw.replace(/\D/g, '')
+      // נחפש גם לפי הערך כפי שהוקלד וגם לפי הספרות בלבד (כך נתפוס ת.ז. שנשמרה מנורמלת)
+      const variants = Array.from(new Set([raw, digits].filter(Boolean)))
+      const orFilter = variants.map(v => `spouse_id_number.eq.${v}`).join(',')
+
+      // חיפוש לפי תעודת הזהות של האישה (spouse_id_number)
       const { data, error } = await supabase
         .from('beneficiaries')
         .select('*')
-        .eq('id_number', idInput.trim())
-        .single()
+        .or(orFilter)
+        .maybeSingle()
+
       if (error || !data) {
-        setLookupError('לא נמצאה נתמכת עם תעודת זהות זו במערכת. יש לרשום אותה תחילה בכרטסת נתמכים.')
+        setLookupError('לא נמצאה אישה עם תעודת זהות זו במערכת. יש לרשום את המשפחה תחילה בכרטסת נתמכים (כולל פרטי האישה).')
+      } else if (data.marital_status !== 'נשואים') {
+        // גרושה / אלמנה — אין אפשרות לפתוח תיק יולדת
+        setLookupError(`נמצאה רשומה אך הסטטוס המשפחתי הוא "${data.marital_status || 'לא ידוע'}". ניתן לפתוח תיק יולדת רק עבור סטטוס "נשואים".`)
       } else {
         setMother(data)
       }
@@ -146,7 +157,7 @@ export default function NewMaternityPage() {
       <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-4">
         <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
           <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center">1</span>
-          פרטי האם
+          פרטי האם (יולדת)
         </h2>
 
         <div className="flex gap-2">
@@ -155,7 +166,7 @@ export default function NewMaternityPage() {
             value={idInput}
             onChange={e => setIdInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && lookupMother()}
-            placeholder="הכנס מספר תעודת זהות של האם"
+            placeholder="הכנס מספר תעודת זהות של האישה (היולדת)"
             className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-left ltr-num"
             dir="ltr"
           />
@@ -198,7 +209,8 @@ export default function NewMaternityPage() {
               <button onClick={() => { setMother(null); setIdInput('') }} className="text-slate-400 hover:text-slate-600"><X size={15} /></button>
             </div>
             <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-green-700 mt-1">
-              <span>ת.ז.: <span className="ltr-num font-mono">{mother.id_number}</span></span>
+              <span>ת.ז. האישה: <span className="ltr-num font-mono">{mother.spouse_id_number ?? mother.id_number}</span></span>
+              <span>ת.ז. הבעל: <span className="ltr-num font-mono">{mother.id_number}</span></span>
               {mother.phone && <span>טלפון: <span className="ltr-num">{mother.phone}</span></span>}
               {mother.city && <span>עיר: {mother.city}</span>}
             </div>
