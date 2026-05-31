@@ -16,6 +16,7 @@ import {
   Trees,
 } from 'lucide-react'
 import { useState } from 'react'
+import type { UserPermissions, SectionKey } from '@/types'
 
 function LogoBadge() {
   const [error, setError] = useState(false)
@@ -36,20 +37,27 @@ function LogoBadge() {
   )
 }
 
-const navItems = [
-  { href: '/admin/dashboard', label: 'לוח בקרה', icon: LayoutDashboard },
-  { href: '/admin/beneficiaries', label: 'נתמכים', icon: Users },
-  { href: '/admin/lineage', label: 'עץ הדורות', icon: Trees },
-  { href: '/admin/maternity', label: 'יולדות', icon: Baby },
-  { href: '/admin/loans', label: 'הלוואות', icon: CreditCard },
-  { href: '/admin/distributions', label: 'חלוקות', icon: Gift },
-  { href: '/admin/reports', label: 'דוחות', icon: BarChart3 },
-  { href: '/admin/settings', label: 'הגדרות', icon: Settings },
+const navItems: { href: string; label: string; icon: React.ElementType; section?: SectionKey }[] = [
+  { href: '/admin/dashboard',      label: 'לוח בקרה',  icon: LayoutDashboard },
+  { href: '/admin/beneficiaries',  label: 'נתמכים',    icon: Users,       section: 'beneficiaries' },
+  { href: '/admin/lineage',        label: 'עץ הדורות', icon: Trees,       section: 'lineage' },
+  { href: '/admin/maternity',      label: 'יולדות',    icon: Baby,        section: 'maternity' },
+  { href: '/admin/loans',          label: 'הלוואות',   icon: CreditCard,  section: 'loans' },
+  { href: '/admin/distributions',  label: 'חלוקות',    icon: Gift,        section: 'distributions' },
+  { href: '/admin/reports',        label: 'דוחות',     icon: BarChart3,   section: 'reports' },
+  { href: '/admin/settings',       label: 'הגדרות',    icon: Settings },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ isAdmin, permissions }: { isAdmin?: boolean; permissions?: UserPermissions }) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  const visibleItems = navItems.filter(item => {
+    if (!item.section) return true           // dashboard & settings always visible
+    if (isAdmin) return true                 // admin sees everything
+    const level = permissions?.[item.section] ?? 'view'
+    return level !== 'none'
+  })
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -62,7 +70,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {visibleItems.map(({ href, label, icon: Icon }) => {
           const active =
             href === '/admin/dashboard'
               ? pathname === '/admin/dashboard'

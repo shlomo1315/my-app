@@ -31,7 +31,7 @@ export default async function DashboardLayout({
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
       <WelcomeModal />
-      <Sidebar />
+      <Sidebar isAdmin={profile?.role === 'admin'} permissions={profile?.permissions} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header user={profile} />
         <main className="flex-1 overflow-y-auto">

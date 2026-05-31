@@ -91,10 +91,10 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'מפתח השירות אינו מוגדר' }, { status: 500 })
   }
 
-  let body: { id?: string; full_name?: string; role?: string; is_active?: boolean; phone?: string }
+  let body: { id?: string; full_name?: string; role?: string; is_active?: boolean; phone?: string; permissions?: Record<string, string> }
   try { body = await request.json() } catch { return NextResponse.json({ error: 'בקשה לא תקינה' }, { status: 400 }) }
 
-  const { id, full_name, role, is_active, phone } = body
+  const { id, full_name, role, is_active, phone, permissions } = body
 
   if (!id) return NextResponse.json({ error: 'חסר מזהה משתמש' }, { status: 400 })
   if (role && !VALID_ROLES.includes(role)) return NextResponse.json({ error: 'תפקיד לא תקין' }, { status: 400 })
@@ -104,6 +104,7 @@ export async function PATCH(request: NextRequest) {
   if (role !== undefined) updates.role = role
   if (is_active !== undefined) updates.is_active = is_active
   if (phone !== undefined) updates.phone = phone ? String(phone).trim() : null
+  if (permissions !== undefined) updates.permissions = permissions
 
   const { error } = await admin.from('profiles').update(updates).eq('id', id)
   if (error) return NextResponse.json({ error: `שגיאה בעדכון: ${error.message}` }, { status: 500 })

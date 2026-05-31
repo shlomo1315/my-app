@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { X, Loader2, UserPlus, Check, AlertTriangle, Eye, EyeOff } from 'lucide-react'
 import { ROLE_LABELS, type UserRole } from '@/types'
 
-const ROLES: UserRole[] = ['admin', 'secretary', 'reviewer', 'collections']
+const ROLES: UserRole[] = ['admin', 'secretary']
 
 export default function AddUserButton() {
   const router = useRouter()

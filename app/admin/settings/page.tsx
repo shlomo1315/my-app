@@ -1,4 +1,4 @@
-import { Bell, Database, Shield, Users } from 'lucide-react'
+import { Bell, Database, Users } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
 import { Profile, ROLE_LABELS } from '@/types'
@@ -100,32 +100,6 @@ export default async function SettingsPage() {
               ))}
             </div>
           )}
-        </Card>
-
-        <Card>
-          <div className="flex items-center gap-2 mb-4">
-            <Shield size={18} className="text-indigo-500" />
-            <h2 className="text-sm font-semibold text-slate-700">הרשאות תפקידים</h2>
-          </div>
-          <div className="space-y-3">
-            {[
-              { role: 'admin' as const, perms: ['ניהול מלא', 'הוספת משתמשים', 'אישור זכאות', 'ניהול הלוואות', 'דוחות'], color: 'bg-purple-100 text-purple-700' },
-              { role: 'secretary' as const, perms: ['רישום נתמכים', 'עדכון נתונים', 'פתיחת תיקים'], color: 'bg-blue-100 text-blue-700' },
-              { role: 'reviewer' as const, perms: ['בדיקת זכאות', 'אישור/דחייה', 'אימות מסמכים'], color: 'bg-green-100 text-green-700' },
-              { role: 'collections' as const, perms: ['ניהול גבייה', 'רישום תשלומים', 'דוחות פיגורים'], color: 'bg-orange-100 text-orange-700' },
-            ].map(({ role, perms, color }) => (
-              <div key={role} className="flex items-start gap-3 py-2 border-b border-slate-100 last:border-0">
-                <span className={`text-xs font-semibold rounded-full px-2 py-0.5 flex-shrink-0 mt-0.5 ${color}`}>
-                  {ROLE_LABELS[role]}
-                </span>
-                <div className="flex flex-wrap gap-1">
-                  {perms.map((p) => (
-                    <span key={p} className="text-xs bg-slate-100 text-slate-600 rounded px-2 py-0.5">{p}</span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
         </Card>
 
         <Card>
