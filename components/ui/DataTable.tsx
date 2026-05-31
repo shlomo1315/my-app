@@ -37,13 +37,16 @@ export default function DataTable<T extends { id: string }>({
   const [page, setPage] = useState(1)
   const pageSize = 20
 
-  const filtered = search
-    ? data.filter((row) =>
-        searchKeys.some((k) => {
-          const val = row[k]
-          return typeof val === 'string' && val.toLowerCase().includes(search.toLowerCase())
+  const q = search.trim().toLowerCase()
+  const filtered = q.length >= 2
+    ? data.filter((row) => {
+        const keys = searchKeys.length ? searchKeys : (Object.keys(row) as (keyof T)[])
+        return keys.some((k) => {
+          const val = (row as Record<string, unknown>)[k as string]
+          if (val == null || typeof val === 'object') return false
+          return String(val).toLowerCase().includes(q)
         })
-      )
+      })
     : data
 
   const sorted = sortKey
