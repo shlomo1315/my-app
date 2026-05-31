@@ -16,7 +16,7 @@ const SECTIONS: { key: SectionKey; label: string }[] = [
 ]
 
 const LEVELS: { value: PermissionLevel; label: string; color: string }[] = [
-  { value: 'none', label: 'ללא',    color: 'bg-slate-100 text-slate-500 border-slate-200' },
+  { value: 'none', label: 'ללא',    color: 'bg-red-100 text-red-600 border-red-300' },
   { value: 'view', label: 'צפייה', color: 'bg-sky-100 text-sky-700 border-sky-200' },
   { value: 'edit', label: 'עריכה', color: 'bg-amber-100 text-amber-700 border-amber-200' },
   { value: 'add',  label: 'הוספה', color: 'bg-green-100 text-green-700 border-green-200' },
