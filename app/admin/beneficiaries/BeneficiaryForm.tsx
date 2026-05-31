@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Button from '@/components/ui/Button'
-import { GitBranch, ChevronLeft, Loader2, Heart, User, Phone, MapPin, Users, FileText } from 'lucide-react'
+import { GitBranch, ChevronLeft, Loader2, Heart, User, Phone, MapPin, Users, FileText, Plus, X } from 'lucide-react'
 
 const MARITAL_OPTIONS = ['נשואים', 'גרוש', 'גרושה', 'אלמן', 'אלמנה']
 const WIFE_PRIMARY_STATUSES = ['גרושה', 'אלמנה']
@@ -269,7 +269,7 @@ interface FormState {
 }
 
 interface Props {
-  defaultValues?: Partial<FormState & { lineage_node_id: string; children: ChildEntry[] }>
+  defaultValues?: Partial<FormState & { lineage_node_id: string; children: ChildEntry[]; lineage_manual: string[] }>
   beneficiaryId?: string
 }
 
@@ -302,6 +302,10 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
     eligibility_status: defaultValues?.eligibility_status ?? 'pending',
   })
   const [lineagePath, setLineagePath] = useState<string[]>([])
+  // Manual generations beyond the tree (דור 5 ומעלה) — free text the user adds himself
+  const [manualLineage, setManualLineage] = useState<string[]>(
+    Array.isArray(defaultValues?.lineage_manual) ? defaultValues!.lineage_manual : []
+  )
   const [children, setChildren] = useState<ChildEntry[]>(
     Array.isArray(defaultValues?.children) ? defaultValues!.children : []
   )
@@ -417,6 +421,7 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
         })),
         notes: form.notes || null,
         lineage_node_id: form.lineage_node_id || null,
+        lineage_manual: manualLineage.map(s => s.trim()).filter(Boolean),
         eligibility_status: form.eligibility_status || 'pending',
       }
 
@@ -711,11 +716,57 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
         {form.lineage_node_id && (
           <button
             type="button"
-            onClick={() => { setForm(f => ({ ...f, lineage_node_id: '' })); setLineagePath([]) }}
+            onClick={() => { setForm(f => ({ ...f, lineage_node_id: '' })); setLineagePath([]); setManualLineage([]) }}
             className="mt-2 text-xs text-slate-400 hover:text-slate-600 underline"
           >
             נקה בחירה
           </button>
+        )}
+
+        {/* Manual generations (דור 5 ומעלה) — appear after a branch is fully selected */}
+        {form.lineage_node_id && (
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <p className="text-xs font-medium text-slate-600 mb-1">
+              המשך דורות (דור {lineagePath.length + 1} ומעלה)
+            </p>
+            <p className="text-xs text-slate-400 mb-3">
+              אם הנתמך שייך לדור שאינו ברשימה, הוסף כאן את שמות הדורות הבאים ידנית.
+            </p>
+
+            <div className="flex flex-col gap-2">
+              {manualLineage.map((val, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500 w-14 flex-shrink-0">
+                    דור {lineagePath.length + 1 + idx}
+                  </span>
+                  <FInput
+                    value={val}
+                    onChange={e =>
+                      setManualLineage(prev => prev.map((v, i) => (i === idx ? e.target.value : v)))
+                    }
+                    placeholder="שם"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setManualLineage(prev => prev.filter((_, i) => i !== idx))}
+                    className="text-slate-300 hover:text-red-500 flex-shrink-0"
+                    aria-label="הסר דור"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setManualLineage(prev => [...prev, ''])}
+              className="mt-3 flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 border border-indigo-200 hover:border-indigo-400 rounded-lg px-3 py-1.5 transition-colors"
+            >
+              <Plus size={14} />
+              הוסף דור {lineagePath.length + 1 + manualLineage.length}
+            </button>
+          </div>
         )}
       </Section>
 
