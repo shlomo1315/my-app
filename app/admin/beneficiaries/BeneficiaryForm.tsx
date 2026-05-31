@@ -5,13 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import Button from '@/components/ui/Button'
 import { GitBranch, ChevronLeft, Loader2, Heart, User, Phone, MapPin, Users, FileText } from 'lucide-react'
 
-const MARITAL_OPTIONS = [
-  'נישואים', 'גרוש', 'גרושה', 'אלמן', 'אלמנה',
-]
-// Statuses where the primary person is the WOMAN (גרושה / אלמנה)
+const MARITAL_OPTIONS = ['נשואים', 'גרוש', 'גרושה', 'אלמן', 'אלמנה']
 const WIFE_PRIMARY_STATUSES = ['גרושה', 'אלמנה']
-// Only a currently-married couple shows BOTH husband and wife details
-const MARRIED_STATUS = 'נישואים'
+const MARRIED_STATUS = 'נשואים'
 
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'ממתין לאישור' },
@@ -21,15 +17,28 @@ const STATUS_OPTIONS = [
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+function validateIsraeliId(raw: string): boolean {
+  const id = raw.replace(/\D/g, '').padStart(9, '0')
+  if (id.length !== 9) return false
+  let sum = 0
+  for (let i = 0; i < 9; i++) {
+    let d = parseInt(id[i]) * (i % 2 === 0 ? 1 : 2)
+    if (d > 9) d -= 9
+    sum += d
+  }
+  return sum % 10 === 0
+}
+
 interface ChildEntry {
   name: string
   id_number: string
+  doc_type: 'id' | 'passport'
   gender: string
   birth_date: string
 }
 
 function emptyChild(): ChildEntry {
-  return { name: '', id_number: '', gender: '', birth_date: '' }
+  return { name: '', id_number: '', doc_type: 'id', gender: '', birth_date: '' }
 }
 
 interface LineageNode {
@@ -235,7 +244,6 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       setForm(f => ({ ...f, [k]: e.target.value }))
 
-  // Sync the number-of-children field with the per-child detail rows
   const handleChildrenCount = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value
     setForm(f => ({ ...f, children_count: raw }))
@@ -247,54 +255,50 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
     })
   }
 
-  const setChild = (idx: number, key: keyof ChildEntry, value: string) =>
+  const setChild = <K extends keyof ChildEntry>(idx: number, key: K, value: ChildEntry[K]) =>
     setChildren(prev => prev.map((c, i) => (i === idx ? { ...c, [key]: value } : c)))
 
-  // Who is the primary person? (woman for גרושה/אלמנה, otherwise man)
+  // Derived flags
   const primaryIsWife = WIFE_PRIMARY_STATUSES.includes(form.marital_status)
   const primaryGender = primaryIsWife ? 'female' : 'male'
-  const primaryNameLabel = primaryIsWife ? 'שם האישה' : 'שם הבעל'
-  // Show the wife block (in addition to the husband) only when married
-  const showWifeFields = form.marital_status === MARRIED_STATUS
+  const showWifeFields = form.marital_status === MARRIED_STATUS  // spouse data exists only when married
+  const showHusbandSection = !primaryIsWife                       // גרוש, אלמן, נשואים
+  const showWifeSection = primaryIsWife || showWifeFields         // גרושה, אלמנה, נשואים
 
   const validate = (): boolean => {
     const errs: Partial<Record<keyof FormState, string>> = {}
 
-    // מצב משפחתי
     if (!form.marital_status) errs.marital_status = 'יש לבחור מצב משפחתי'
 
-    // פרטים אישיים (של האדם הראשי — בעל או אישה)
     if (!form.id_number.trim()) errs.id_number = 'שדה חובה'
-    else if (!/^\d{5,9}$/.test(form.id_number.replace(/\D/g, ''))) errs.id_number = 'ת.ז. לא תקינה'
+    else if (!validateIsraeliId(form.id_number)) errs.id_number = 'ת.ז. לא תקינה'
+
     if (!form.full_name.trim()) errs.full_name = 'שדה חובה'
     if (!form.birth_date) errs.birth_date = 'שדה חובה'
 
-    // האישה (רק בנישואים)
     if (showWifeFields) {
       if (!form.spouse_name.trim()) errs.spouse_name = 'שדה חובה'
       if (!form.spouse_id_number.trim()) errs.spouse_id_number = 'שדה חובה'
-      else if (!/^\d{5,9}$/.test(form.spouse_id_number.replace(/\D/g, ''))) errs.spouse_id_number = 'ת.ז. לא תקינה'
+      else if (!validateIsraeliId(form.spouse_id_number)) errs.spouse_id_number = 'ת.ז. לא תקינה'
     }
 
-    // פרטי קשר
     if (!form.phone.trim()) errs.phone = 'שדה חובה'
     if (!form.email.trim()) errs.email = 'שדה חובה'
     else if (!EMAIL_REGEX.test(form.email.trim())) errs.email = 'אימייל לא תקין'
 
-    // כתובת
     if (!form.address.trim()) errs.address = 'שדה חובה'
     if (!form.city.trim()) errs.city = 'שדה חובה'
 
-    // שיוך שושלת
     if (!form.lineage_node_id) errs.lineage_node_id = 'יש לבחור שיוך שושלת'
 
-    // ילדים
     const childErrs: Partial<Record<keyof ChildEntry, string>>[] = children.map(c => {
       const ce: Partial<Record<keyof ChildEntry, string>> = {}
       if (!c.name.trim()) ce.name = 'שדה חובה'
       if (!c.gender) ce.gender = 'שדה חובה'
       if (!c.birth_date) ce.birth_date = 'שדה חובה'
-      if (c.id_number.trim() && !/^\d{5,9}$/.test(c.id_number.replace(/\D/g, ''))) ce.id_number = 'ת.ז. לא תקינה'
+      if (c.id_number.trim() && c.doc_type === 'id' && !validateIsraeliId(c.id_number)) {
+        ce.id_number = 'ת.ז. לא תקינה (ספרת ביקורת)'
+      }
       return ce
     })
     setChildErrors(childErrs)
@@ -325,7 +329,10 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
         children_count: children.length,
         children: children.map(c => ({
           name: c.name.trim(),
-          id_number: c.id_number.replace(/\D/g, '') || null,
+          id_number: c.id_number.trim()
+            ? (c.doc_type === 'id' ? c.id_number.replace(/\D/g, '') : c.id_number.trim())
+            : null,
+          doc_type: c.doc_type,
           gender: c.gender || null,
           birth_date: c.birth_date || null,
         })),
@@ -337,7 +344,7 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
       if (isEdit) {
         const { error } = await supabase.from('beneficiaries').update(payload).eq('id', beneficiaryId)
         if (error) throw error
-        router.back()
+        router.push(`/admin/beneficiaries/${beneficiaryId}`)
       } else {
         const { data: inserted, error } = await supabase
           .from('beneficiaries')
@@ -380,7 +387,7 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
 
       {/* ── Marital status ── */}
       <Section title="מצב משפחתי" icon={Heart}>
-        <div className="flex flex-wrap gap-2 mb-1">
+        <div className="flex flex-wrap gap-2">
           {MARITAL_OPTIONS.map(opt => (
             <button
               key={opt}
@@ -396,18 +403,20 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
             </button>
           ))}
         </div>
-        {errors.marital_status && <p className="text-xs text-red-500 mt-1">{errors.marital_status}</p>}
+        {errors.marital_status && <p className="text-xs text-red-500 mt-2">{errors.marital_status}</p>}
+      </Section>
 
-        {showWifeFields && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-100">
-            <p className="col-span-2 text-xs font-medium text-slate-500">פרטי האישה</p>
-            <Field label="שם האישה" required error={errors.spouse_name}>
-              <FInput value={form.spouse_name} onChange={set('spouse_name')} placeholder="שם מלא" required />
+      {/* ── Husband section ── */}
+      {showHusbandSection && (
+        <Section title="פרטי הבעל" icon={User}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="שם הבעל" required error={errors.full_name}>
+              <FInput value={form.full_name} onChange={set('full_name')} placeholder="שם מלא" required />
             </Field>
-            <Field label='ת"ז האישה' required error={errors.spouse_id_number}>
+            <Field label="תעודת זהות" required error={errors.id_number}>
               <FInput
-                value={form.spouse_id_number}
-                onChange={set('spouse_id_number')}
+                value={form.id_number}
+                onChange={set('id_number')}
                 placeholder="123456789"
                 dir="ltr"
                 inputMode="numeric"
@@ -415,35 +424,64 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
                 required
               />
             </Field>
+            <Field label="תאריך לידה" required error={errors.birth_date}>
+              <FInput type="date" value={form.birth_date} onChange={set('birth_date')} dir="ltr" required />
+            </Field>
+            <Field label="מספר ילדים" required>
+              <FInput type="number" min="0" max="30" value={form.children_count} onChange={handleChildrenCount} required />
+            </Field>
           </div>
-        )}
-      </Section>
+        </Section>
+      )}
 
-      {/* ── Personal (primary person: husband or wife) ── */}
-      <Section title="פרטים אישיים" icon={User}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label={primaryNameLabel} required error={errors.full_name}>
-            <FInput value={form.full_name} onChange={set('full_name')} placeholder="שם מלא" required />
-          </Field>
-          <Field label='תעודת זהות' required error={errors.id_number}>
-            <FInput
-              value={form.id_number}
-              onChange={set('id_number')}
-              placeholder="123456789"
-              dir="ltr"
-              inputMode="numeric"
-              maxLength={9}
-              required
-            />
-          </Field>
-          <Field label="תאריך לידה" required error={errors.birth_date}>
-            <FInput type="date" value={form.birth_date} onChange={set('birth_date')} dir="ltr" required />
-          </Field>
-          <Field label="מספר ילדים" required>
-            <FInput type="number" min="0" max="30" value={form.children_count} onChange={handleChildrenCount} required />
-          </Field>
-        </div>
-      </Section>
+      {/* ── Wife section ── */}
+      {showWifeSection && (
+        <Section title="פרטי האישה" icon={Heart}>
+          {primaryIsWife ? (
+            /* Woman is primary person (גרושה / אלמנה) */
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="שם האישה" required error={errors.full_name}>
+                <FInput value={form.full_name} onChange={set('full_name')} placeholder="שם מלא" required />
+              </Field>
+              <Field label="תעודת זהות" required error={errors.id_number}>
+                <FInput
+                  value={form.id_number}
+                  onChange={set('id_number')}
+                  placeholder="123456789"
+                  dir="ltr"
+                  inputMode="numeric"
+                  maxLength={9}
+                  required
+                />
+              </Field>
+              <Field label="תאריך לידה" required error={errors.birth_date}>
+                <FInput type="date" value={form.birth_date} onChange={set('birth_date')} dir="ltr" required />
+              </Field>
+              <Field label="מספר ילדים" required>
+                <FInput type="number" min="0" max="30" value={form.children_count} onChange={handleChildrenCount} required />
+              </Field>
+            </div>
+          ) : (
+            /* Woman is spouse (נשואים) */
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="שם האישה" required error={errors.spouse_name}>
+                <FInput value={form.spouse_name} onChange={set('spouse_name')} placeholder="שם מלא" required />
+              </Field>
+              <Field label="תעודת זהות האישה" required error={errors.spouse_id_number}>
+                <FInput
+                  value={form.spouse_id_number}
+                  onChange={set('spouse_id_number')}
+                  placeholder="123456789"
+                  dir="ltr"
+                  inputMode="numeric"
+                  maxLength={9}
+                  required
+                />
+              </Field>
+            </div>
+          )}
+        </Section>
+      )}
 
       {/* ── Children details ── */}
       {children.length > 0 && (
@@ -459,16 +497,6 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
                       onChange={e => setChild(idx, 'name', e.target.value)}
                       placeholder="שם מלא"
                       required
-                    />
-                  </Field>
-                  <Field label="תעודת זהות" error={childErrors[idx]?.id_number}>
-                    <FInput
-                      value={child.id_number}
-                      onChange={e => setChild(idx, 'id_number', e.target.value)}
-                      placeholder="123456789"
-                      dir="ltr"
-                      inputMode="numeric"
-                      maxLength={9}
                     />
                   </Field>
                   <Field label="מין" required error={childErrors[idx]?.gender}>
@@ -492,6 +520,46 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
                       required
                     />
                   </Field>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-medium text-slate-600">
+                      מסמך זיהוי <span className="font-normal text-slate-400">(לא חובה)</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setChild(idx, 'doc_type', 'id')}
+                        className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors ${
+                          child.doc_type === 'id'
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white text-slate-700 border-slate-300 hover:border-indigo-400 hover:bg-indigo-50'
+                        }`}
+                      >
+                        ת&quot;ז
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChild(idx, 'doc_type', 'passport')}
+                        className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors ${
+                          child.doc_type === 'passport'
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white text-slate-700 border-slate-300 hover:border-indigo-400 hover:bg-indigo-50'
+                        }`}
+                      >
+                        דרכון
+                      </button>
+                    </div>
+                    <FInput
+                      value={child.id_number}
+                      onChange={e => setChild(idx, 'id_number', e.target.value)}
+                      placeholder={child.doc_type === 'id' ? '123456789' : 'מספר דרכון'}
+                      dir="ltr"
+                      inputMode={child.doc_type === 'id' ? 'numeric' : 'text'}
+                      maxLength={child.doc_type === 'id' ? 9 : 20}
+                    />
+                    {childErrors[idx]?.id_number && (
+                      <p className="text-xs text-red-500">{childErrors[idx].id_number}</p>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
