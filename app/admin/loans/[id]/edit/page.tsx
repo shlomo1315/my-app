@@ -23,6 +23,7 @@ export default function EditLoanPage({ params }: { params: Promise<{ id: string 
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [beneficiaryId, setBeneficiaryId] = useState<string | null>(null)
+  const [borrower, setBorrower] = useState<{ name: string; id: string } | null>(null)
 
   const [purpose, setPurpose] = useState('')
   const [purposeDetails, setPurposeDetails] = useState('')
@@ -44,9 +45,11 @@ export default function EditLoanPage({ params }: { params: Promise<{ id: string 
   useEffect(() => {
     (async () => {
       try {
-        const { data, error } = await supabase.from('loans').select('*').eq('id', id).single()
+        const { data, error } = await supabase.from('loans').select('*, beneficiary:beneficiaries(full_name, family_name, id_number)').eq('id', id).single()
         if (error || !data) throw error ?? new Error('not found')
         setBeneficiaryId(data.beneficiary_id)
+        const ben = data.beneficiary as { full_name?: string; family_name?: string; id_number?: string } | undefined
+        if (ben) setBorrower({ name: [ben.family_name, ben.full_name].filter(Boolean).join(' '), id: ben.id_number ?? '' })
         setPurpose(data.purpose ?? '')
         setPurposeDetails(data.purpose_details ?? '')
         setAmount(data.amount ? String(Math.round(Number(data.amount))) : '')
@@ -132,6 +135,22 @@ export default function EditLoanPage({ params }: { params: Promise<{ id: string 
           <p className="text-sm text-slate-500">עדכון פרטי בקשת ההלוואה</p>
         </div>
       </div>
+
+      {/* פרטי הלווה (הבעל) */}
+      {borrower && (
+        <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
+              {borrower.name.charAt(0) || '?'}
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-slate-800">{borrower.name || '—'}</p>
+              <p className="text-xs text-slate-500">פרטי הלווה (הבעל)</p>
+            </div>
+          </div>
+          {borrower.id && <span className="text-xs font-mono text-slate-600 ltr-num">ת.ז. {borrower.id}</span>}
+        </div>
+      )}
 
       {/* Purpose */}
       <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-3">
