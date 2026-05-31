@@ -185,9 +185,71 @@ function FInput({ className = '', ...props }: React.InputHTMLAttributes<HTMLInpu
   )
 }
 
+// Reusable ID / passport selector + matching input
+function DocTypeField({
+  label,
+  required,
+  docType,
+  value,
+  error,
+  onDocType,
+  onValue,
+}: {
+  label: string
+  required?: boolean
+  docType: 'id' | 'passport'
+  value: string
+  error?: string
+  onDocType: (t: 'id' | 'passport') => void
+  onValue: (v: string) => void
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-medium text-slate-600">
+        {label}{required && <span className="text-red-500 mr-1">*</span>}
+      </label>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => onDocType('id')}
+          className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors ${
+            docType === 'id'
+              ? 'bg-indigo-600 text-white border-indigo-600'
+              : 'bg-white text-slate-700 border-slate-300 hover:border-indigo-400 hover:bg-indigo-50'
+          }`}
+        >
+          תעודת זהות
+        </button>
+        <button
+          type="button"
+          onClick={() => onDocType('passport')}
+          className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors ${
+            docType === 'passport'
+              ? 'bg-indigo-600 text-white border-indigo-600'
+              : 'bg-white text-slate-700 border-slate-300 hover:border-indigo-400 hover:bg-indigo-50'
+          }`}
+        >
+          דרכון
+        </button>
+      </div>
+      <FInput
+        value={value}
+        onChange={e => onValue(e.target.value)}
+        placeholder={docType === 'id' ? '123456789' : 'מספר דרכון'}
+        dir="ltr"
+        inputMode={docType === 'id' ? 'numeric' : 'text'}
+        maxLength={docType === 'id' ? 9 : 20}
+        required={required}
+      />
+      {error && <p className="text-xs text-red-500">{error}</p>}
+    </div>
+  )
+}
+
 interface FormState {
   family_name: string
   id_number: string
+  id_doc_type: 'id' | 'passport'
   full_name: string
   phone: string
   phone2: string
@@ -199,6 +261,7 @@ interface FormState {
   marital_status: string
   spouse_name: string
   spouse_id_number: string
+  spouse_doc_type: 'id' | 'passport'
   children_count: string
   notes: string
   lineage_node_id: string
@@ -220,6 +283,7 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
   const [form, setForm] = useState<FormState>({
     family_name: defaultValues?.family_name ?? '',
     id_number: defaultValues?.id_number ?? '',
+    id_doc_type: defaultValues?.id_doc_type ?? 'id',
     full_name: defaultValues?.full_name ?? '',
     phone: defaultValues?.phone ?? '',
     phone2: defaultValues?.phone2 ?? '',
@@ -231,6 +295,7 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
     marital_status: defaultValues?.marital_status ?? '',
     spouse_name: defaultValues?.spouse_name ?? '',
     spouse_id_number: defaultValues?.spouse_id_number ?? '',
+    spouse_doc_type: defaultValues?.spouse_doc_type ?? 'id',
     children_count: String(defaultValues?.children_count ?? '0'),
     notes: defaultValues?.notes ?? '',
     lineage_node_id: defaultValues?.lineage_node_id ?? '',
@@ -276,7 +341,9 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
     if (!form.family_name.trim()) errs.family_name = 'שדה חובה'
 
     if (!form.id_number.trim()) errs.id_number = 'שדה חובה'
-    else if (!validateIsraeliId(form.id_number)) errs.id_number = 'ת.ז. לא תקינה'
+    else if (form.id_doc_type === 'id' && !validateIsraeliId(form.id_number)) {
+      errs.id_number = 'תעודת זהות ישראלית לא תקינה (כולל ספרת ביקורת)'
+    }
 
     if (!form.full_name.trim()) errs.full_name = 'שדה חובה'
     if (!form.birth_date) errs.birth_date = 'שדה חובה'
@@ -284,7 +351,9 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
     if (showWifeFields) {
       if (!form.spouse_name.trim()) errs.spouse_name = 'שדה חובה'
       if (!form.spouse_id_number.trim()) errs.spouse_id_number = 'שדה חובה'
-      else if (!validateIsraeliId(form.spouse_id_number)) errs.spouse_id_number = 'ת.ז. לא תקינה'
+      else if (form.spouse_doc_type === 'id' && !validateIsraeliId(form.spouse_id_number)) {
+        errs.spouse_id_number = 'תעודת זהות ישראלית לא תקינה (כולל ספרת ביקורת)'
+      }
     }
 
     if (!form.phone.trim()) errs.phone = 'שדה חובה'
@@ -302,7 +371,7 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
       if (!c.gender) ce.gender = 'שדה חובה'
       if (!c.birth_date) ce.birth_date = 'שדה חובה'
       if (c.id_number.trim() && c.doc_type === 'id' && !validateIsraeliId(c.id_number)) {
-        ce.id_number = 'ת.ז. לא תקינה (ספרת ביקורת)'
+        ce.id_number = 'תעודת זהות ישראלית לא תקינה (כולל ספרת ביקורת)'
       }
       return ce
     })
@@ -320,7 +389,8 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
     try {
       const payload = {
         family_name: form.family_name.trim(),
-        id_number: form.id_number.replace(/\D/g, ''),
+        id_number: form.id_doc_type === 'id' ? form.id_number.replace(/\D/g, '') : form.id_number.trim(),
+        id_doc_type: form.id_doc_type,
         full_name: form.full_name.trim(),
         phone: form.phone || null,
         phone2: form.phone2 || null,
@@ -331,7 +401,10 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
         gender: primaryGender,
         marital_status: form.marital_status || null,
         spouse_name: showWifeFields ? (form.spouse_name || null) : null,
-        spouse_id_number: showWifeFields ? (form.spouse_id_number.replace(/\D/g, '') || null) : null,
+        spouse_id_number: showWifeFields
+          ? ((form.spouse_doc_type === 'id' ? form.spouse_id_number.replace(/\D/g, '') : form.spouse_id_number.trim()) || null)
+          : null,
+        spouse_doc_type: showWifeFields ? form.spouse_doc_type : null,
         children_count: children.length,
         children: children.map(c => ({
           name: c.name.trim(),
@@ -422,17 +495,15 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
             <Field label="שם הבעל (שם פרטי)" required error={errors.full_name}>
               <FInput value={form.full_name} onChange={set('full_name')} placeholder="שם פרטי" required />
             </Field>
-            <Field label="תעודת זהות" required error={errors.id_number}>
-              <FInput
-                value={form.id_number}
-                onChange={set('id_number')}
-                placeholder="123456789"
-                dir="ltr"
-                inputMode="numeric"
-                maxLength={9}
-                required
-              />
-            </Field>
+            <DocTypeField
+              label="מסמך זיהוי"
+              required
+              docType={form.id_doc_type}
+              value={form.id_number}
+              error={errors.id_number}
+              onDocType={t => setForm(f => ({ ...f, id_doc_type: t }))}
+              onValue={v => setForm(f => ({ ...f, id_number: v }))}
+            />
             <Field label="תאריך לידה" required error={errors.birth_date}>
               <FInput type="date" value={form.birth_date} onChange={set('birth_date')} dir="ltr" required />
             </Field>
@@ -455,17 +526,15 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
               <Field label="שם האישה (שם פרטי)" required error={errors.full_name}>
                 <FInput value={form.full_name} onChange={set('full_name')} placeholder="שם פרטי" required />
               </Field>
-              <Field label="תעודת זהות" required error={errors.id_number}>
-                <FInput
-                  value={form.id_number}
-                  onChange={set('id_number')}
-                  placeholder="123456789"
-                  dir="ltr"
-                  inputMode="numeric"
-                  maxLength={9}
-                  required
-                />
-              </Field>
+              <DocTypeField
+                label="מסמך זיהוי"
+                required
+                docType={form.id_doc_type}
+                value={form.id_number}
+                error={errors.id_number}
+                onDocType={t => setForm(f => ({ ...f, id_doc_type: t }))}
+                onValue={v => setForm(f => ({ ...f, id_number: v }))}
+              />
               <Field label="תאריך לידה" required error={errors.birth_date}>
                 <FInput type="date" value={form.birth_date} onChange={set('birth_date')} dir="ltr" required />
               </Field>
@@ -479,17 +548,15 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
               <Field label="שם האישה" required error={errors.spouse_name}>
                 <FInput value={form.spouse_name} onChange={set('spouse_name')} placeholder="שם מלא" required />
               </Field>
-              <Field label="תעודת זהות האישה" required error={errors.spouse_id_number}>
-                <FInput
-                  value={form.spouse_id_number}
-                  onChange={set('spouse_id_number')}
-                  placeholder="123456789"
-                  dir="ltr"
-                  inputMode="numeric"
-                  maxLength={9}
-                  required
-                />
-              </Field>
+              <DocTypeField
+                label="מסמך זיהוי האישה"
+                required
+                docType={form.spouse_doc_type}
+                value={form.spouse_id_number}
+                error={errors.spouse_id_number}
+                onDocType={t => setForm(f => ({ ...f, spouse_doc_type: t }))}
+                onValue={v => setForm(f => ({ ...f, spouse_id_number: v }))}
+              />
             </div>
           )}
         </Section>
