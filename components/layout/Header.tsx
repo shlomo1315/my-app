@@ -3,6 +3,7 @@ import { Bell, LogOut, User } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Profile, ROLE_LABELS } from '@/types'
+import HeaderDateTime from './HeaderDateTime'
 
 interface HeaderProps {
   user?: Profile | null
@@ -25,7 +26,8 @@ export default function Header({ user, title }: HeaderProps) {
         {title && <h1 className="text-base font-semibold text-slate-800">{title}</h1>}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
+        <HeaderDateTime />
         <button className="relative p-2 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors">
           <Bell size={18} />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
