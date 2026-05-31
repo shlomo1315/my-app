@@ -6,9 +6,12 @@ import Button from '@/components/ui/Button'
 import { GitBranch, ChevronLeft, Loader2, Heart, User, Phone, MapPin, Users, FileText } from 'lucide-react'
 
 const MARITAL_OPTIONS = [
-  'רווק', 'רווקה', 'נשוי', 'נשואה', 'גרוש', 'גרושה', 'אלמן', 'אלמנה',
+  'נשוי', 'נשואה', 'גרוש', 'גרושה', 'אלמן', 'אלמנה',
 ]
-const MARRIED_STATUSES = ['נשוי', 'נשואה', 'אלמן', 'אלמנה']
+// All remaining statuses involve a spouse (current / former / deceased)
+const MARRIED_STATUSES = MARITAL_OPTIONS
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 interface LineageNode {
   id: string
@@ -169,7 +172,6 @@ interface FormState {
   spouse_id_number: string
   children_count: string
   notes: string
-  nedarim_id: string
   lineage_node_id: string
 }
 
@@ -200,7 +202,6 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
     spouse_id_number: defaultValues?.spouse_id_number ?? '',
     children_count: String(defaultValues?.children_count ?? '0'),
     notes: defaultValues?.notes ?? '',
-    nedarim_id: defaultValues?.nedarim_id ?? '',
     lineage_node_id: defaultValues?.lineage_node_id ?? '',
   })
   const [lineagePath, setLineagePath] = useState<string[]>([])
@@ -213,10 +214,36 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
 
   const validate = (): boolean => {
     const errs: Partial<Record<keyof FormState, string>> = {}
+
+    // מצב משפחתי
+    if (!form.marital_status) errs.marital_status = 'יש לבחור מצב משפחתי'
+
+    // פרטים אישיים
     if (!form.id_number.trim()) errs.id_number = 'שדה חובה'
     else if (!/^\d{5,9}$/.test(form.id_number.replace(/\D/g, ''))) errs.id_number = 'ת.ז. לא תקינה'
     if (!form.full_name.trim()) errs.full_name = 'שדה חובה'
-    if (!form.marital_status) errs.marital_status = 'יש לבחור מצב משפחתי'
+    if (!form.gender) errs.gender = 'שדה חובה'
+    if (!form.birth_date) errs.birth_date = 'שדה חובה'
+
+    // בן/בת הזוג
+    if (showSpouseFields) {
+      if (!form.spouse_name.trim()) errs.spouse_name = 'שדה חובה'
+      if (!form.spouse_id_number.trim()) errs.spouse_id_number = 'שדה חובה'
+      else if (!/^\d{5,9}$/.test(form.spouse_id_number.replace(/\D/g, ''))) errs.spouse_id_number = 'ת.ז. לא תקינה'
+    }
+
+    // פרטי קשר
+    if (!form.phone.trim()) errs.phone = 'שדה חובה'
+    if (!form.email.trim()) errs.email = 'שדה חובה'
+    else if (!EMAIL_REGEX.test(form.email.trim())) errs.email = 'אימייל לא תקין'
+
+    // כתובת
+    if (!form.address.trim()) errs.address = 'שדה חובה'
+    if (!form.city.trim()) errs.city = 'שדה חובה'
+
+    // שיוך שושלת
+    if (!form.lineage_node_id) errs.lineage_node_id = 'יש לבחור שיוך שושלת'
+
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -241,7 +268,6 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
         spouse_id_number: showSpouseFields ? (form.spouse_id_number.replace(/\D/g, '') || null) : null,
         children_count: parseInt(form.children_count) || 0,
         notes: form.notes || null,
-        nedarim_id: form.nedarim_id || null,
         lineage_node_id: form.lineage_node_id || null,
       }
 
@@ -294,12 +320,14 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
             <p className="col-span-2 text-xs font-medium text-slate-500">
               {form.marital_status === 'אלמן' || form.marital_status === 'אלמנה'
                 ? 'פרטי בן/בת הזוג המנוח/ה'
+                : form.marital_status === 'גרוש' || form.marital_status === 'גרושה'
+                ? 'פרטי בן/בת הזוג לשעבר'
                 : 'פרטי בן/בת הזוג'}
             </p>
-            <Field label="שם בן/בת הזוג">
-              <FInput value={form.spouse_name} onChange={set('spouse_name')} placeholder="שם מלא" />
+            <Field label="שם בן/בת הזוג" required error={errors.spouse_name}>
+              <FInput value={form.spouse_name} onChange={set('spouse_name')} placeholder="שם מלא" required />
             </Field>
-            <Field label='ת"ז בן/בת הזוג'>
+            <Field label='ת"ז בן/בת הזוג' required error={errors.spouse_id_number}>
               <FInput
                 value={form.spouse_id_number}
                 onChange={set('spouse_id_number')}
@@ -307,6 +335,7 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
                 dir="ltr"
                 inputMode="numeric"
                 maxLength={9}
+                required
               />
             </Field>
           </div>
@@ -316,6 +345,9 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
       {/* ── Personal ── */}
       <Section title="פרטים אישיים" icon={User}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label="שם הבעל" required error={errors.full_name}>
+            <FInput value={form.full_name} onChange={set('full_name')} placeholder="ישראל ישראלי" required />
+          </Field>
           <Field label='תעודת זהות' required error={errors.id_number}>
             <FInput
               value={form.id_number}
@@ -327,28 +359,23 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
               required
             />
           </Field>
-          <Field label="שם מלא" required error={errors.full_name}>
-            <FInput value={form.full_name} onChange={set('full_name')} placeholder="ישראל ישראלי" required />
-          </Field>
-          <Field label="מגדר">
+          <Field label="מגדר" required error={errors.gender}>
             <select
               value={form.gender}
               onChange={set('gender')}
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
+              required
             >
               <option value="">בחר...</option>
               <option value="male">זכר</option>
               <option value="female">נקבה</option>
             </select>
           </Field>
-          <Field label="תאריך לידה">
-            <FInput type="date" value={form.birth_date} onChange={set('birth_date')} dir="ltr" />
+          <Field label="תאריך לידה" required error={errors.birth_date}>
+            <FInput type="date" value={form.birth_date} onChange={set('birth_date')} dir="ltr" required />
           </Field>
-          <Field label="מספר ילדים">
-            <FInput type="number" min="0" max="30" value={form.children_count} onChange={set('children_count')} />
-          </Field>
-          <Field label="מספר נדרים">
-            <FInput value={form.nedarim_id} onChange={set('nedarim_id')} dir="ltr" placeholder="ID" />
+          <Field label="מספר ילדים" required>
+            <FInput type="number" min="0" max="30" value={form.children_count} onChange={set('children_count')} required />
           </Field>
         </div>
       </Section>
@@ -356,14 +383,14 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
       {/* ── Contact ── */}
       <Section title="פרטי קשר" icon={Phone}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="טלפון ראשי">
-            <FInput type="tel" value={form.phone} onChange={set('phone')} placeholder="050-0000000" dir="ltr" />
+          <Field label="טלפון ראשי" required error={errors.phone}>
+            <FInput type="tel" value={form.phone} onChange={set('phone')} placeholder="050-0000000" dir="ltr" required />
           </Field>
           <Field label="טלפון נוסף">
             <FInput type="tel" value={form.phone2} onChange={set('phone2')} placeholder="050-0000000" dir="ltr" />
           </Field>
-          <Field label="אימייל" error={errors.email}>
-            <FInput type="email" value={form.email} onChange={set('email')} placeholder="name@example.com" dir="ltr" />
+          <Field label="אימייל" required error={errors.email}>
+            <FInput type="email" value={form.email} onChange={set('email')} placeholder="name@example.com" dir="ltr" required />
           </Field>
         </div>
       </Section>
@@ -371,20 +398,23 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
       {/* ── Address ── */}
       <Section title="כתובת" icon={MapPin}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="רחוב ומספר">
-            <FInput value={form.address} onChange={set('address')} placeholder="הרב קוק 12" />
+          <Field label="רחוב ומספר" required error={errors.address}>
+            <FInput value={form.address} onChange={set('address')} placeholder="הרב קוק 12" required />
           </Field>
-          <Field label="עיר">
-            <FInput value={form.city} onChange={set('city')} placeholder="בני ברק" />
+          <Field label="עיר" required error={errors.city}>
+            <FInput value={form.city} onChange={set('city')} placeholder="בני ברק" required />
           </Field>
         </div>
       </Section>
 
       {/* ── Lineage ── */}
-      <Section title="שיוך שושלת" icon={GitBranch}>
+      <Section title="שיוך שושלת *" icon={GitBranch}>
         <p className="text-xs text-slate-500 mb-3">
           בחר את הענף שהנתמך שייך אליו. לחץ על שם ואז המשך לבחור את הדור הבא.
         </p>
+        {errors.lineage_node_id && (
+          <p className="text-xs text-red-500 mb-3">{errors.lineage_node_id}</p>
+        )}
 
         {(form.lineage_node_id || lineagePath.length > 0) && (
           <div className="flex items-center gap-1 flex-wrap mb-3 p-2.5 bg-indigo-50 rounded-lg border border-indigo-100">
@@ -433,6 +463,12 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
           className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
         />
       </Section>
+
+      {Object.keys(errors).length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+          יש שדות חובה שלא מולאו או שאינם תקינים. אנא בדוק את השדות המסומנים באדום.
+        </div>
+      )}
 
       <div className="flex gap-3 justify-end">
         <Button type="button" variant="secondary" onClick={() => router.back()}>ביטול</Button>
