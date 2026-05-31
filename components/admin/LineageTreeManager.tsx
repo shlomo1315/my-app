@@ -66,7 +66,7 @@ function NodeRow({
   onDelete: (id: string, name: string) => void
   onSave: (id: string, payload: EditPayload) => Promise<boolean>
 }) {
-  const [expanded, setExpanded] = useState(depth < 2)
+  const [expanded, setExpanded] = useState(false) // ברירת מחדל: הכל מכווץ; נפתח רק בלחיצה
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState(node.name)
   const [editNotes, setEditNotes] = useState(node.notes ?? '')
