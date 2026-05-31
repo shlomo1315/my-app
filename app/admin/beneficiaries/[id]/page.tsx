@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowRight, Phone, MapPin, Calendar, Users, GitBranch, ChevronLeft } from 'lucide-react'
+import { ArrowRight, Phone, MapPin, Calendar, Users, GitBranch, ChevronLeft, FileText } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
 import { Beneficiary } from '@/types'
 import Card from '@/components/ui/Card'
@@ -49,10 +49,30 @@ async function getLineagePath(nodeId?: string): Promise<string[]> {
   }
 }
 
+// מפה של תיק יולדת → קישור לאישור הלידה, כדי להציג אייקון מסמך בטבלת הילדים
+async function getBirthCertificates(beneficiaryId: string): Promise<Record<string, string>> {
+  if (!isSupabaseConfigured()) return {}
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('maternity_aids')
+      .select('id, birth_certificate_url')
+      .eq('beneficiary_id', beneficiaryId)
+    const map: Record<string, string> = {}
+    for (const r of data ?? []) {
+      if (r.birth_certificate_url) map[r.id] = r.birth_certificate_url
+    }
+    return map
+  } catch {
+    return {}
+  }
+}
+
 export default async function BeneficiaryDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const beneficiary = await getBeneficiary(id)
   const lineagePath = await getLineagePath(beneficiary?.lineage_node_id)
+  const birthCerts = await getBirthCertificates(id)
 
   if (!beneficiary && isSupabaseConfigured()) notFound()
 
@@ -165,7 +185,7 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
       )}
 
       {Array.isArray(beneficiary.children) && (beneficiary.children as unknown[]).length > 0 && (() => {
-        const kids = beneficiary.children as { name: string; id_number?: string; doc_type?: string; gender?: string; birth_date?: string; marital_status?: string; birth_status?: 'pending' | 'approved' }[]
+        const kids = beneficiary.children as { name: string; id_number?: string; doc_type?: string; gender?: string; birth_date?: string; marital_status?: string; birth_status?: 'pending' | 'approved'; maternity_aid_id?: string }[]
         const married = kids.filter(c => c.marital_status === 'married').length
         const single = kids.filter(c => c.marital_status === 'single').length
         const maritalLabel = (c: { gender?: string; marital_status?: string }) => {
@@ -223,6 +243,13 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
                         <span className="inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-800">
                           לידה מאושרת
                         </span>
+                      )}
+                      {c.maternity_aid_id && birthCerts[c.maternity_aid_id] && (
+                        <a href={birthCerts[c.maternity_aid_id]} target="_blank" rel="noopener noreferrer"
+                          title="צפייה באישור הלידה"
+                          className="inline-flex items-center justify-center w-6 h-6 rounded-full text-indigo-600 hover:bg-indigo-50 border border-indigo-200 transition-colors">
+                          <FileText size={13} />
+                        </a>
                       )}
                       {maritalLabel(c) ? (
                         <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${c.marital_status === 'married' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
