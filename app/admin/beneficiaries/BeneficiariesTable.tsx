@@ -8,13 +8,11 @@ import { Beneficiary } from '@/types'
 const fullName = (row: Beneficiary) =>
   [row.family_name, row.full_name].filter(Boolean).join(' ') || row.full_name
 
-// First Hebrew/Latin letter for the avatar
 const initials = (row: Beneficiary) => {
   const name = fullName(row).trim()
   return name ? name.charAt(0) : '?'
 }
 
-// Stable soft color per row based on the id, so avatars feel varied but consistent
 const AVATAR_COLORS = [
   'bg-indigo-100 text-indigo-700',
   'bg-sky-100 text-sky-700',
@@ -48,9 +46,7 @@ const columns: Column<Beneficiary>[] = [
         href={`/admin/beneficiaries/${row.id}`}
         className="flex items-center gap-3 group/name"
       >
-        <span
-          className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${avatarColor(row.id)}`}
-        >
+        <span className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${avatarColor(row.id)}`}>
           {initials(row)}
         </span>
         <span className="flex flex-col min-w-0">
@@ -97,11 +93,9 @@ const columns: Column<Beneficiary>[] = [
     header: 'מצב משפחתי',
     render: (row) =>
       row.marital_status ? (
-        <span
-          className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${
-            MARITAL_TINT[row.marital_status] ?? 'bg-slate-100 text-slate-600'
-          }`}
-        >
+        <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${
+          MARITAL_TINT[row.marital_status] ?? 'bg-slate-100 text-slate-600'
+        }`}>
           {row.marital_status}
         </span>
       ) : (

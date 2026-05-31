@@ -60,7 +60,7 @@ function NodeRow({
   return (
     <div>
       <div
-        className={`flex items-center gap-2 py-2 px-3 rounded-lg hover:bg-slate-50 group transition-colors`}
+        className="flex items-center gap-2 py-2 px-3 rounded-lg hover:bg-slate-50 group transition-colors"
         style={{ paddingRight: `${12 + depth * 20}px` }}
       >
         <button
@@ -87,12 +87,7 @@ function NodeRow({
               }}
               className="flex-1 rounded-lg border border-indigo-300 px-2 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
             />
-            <button
-              onClick={saveEdit}
-              disabled={savingEdit}
-              className="p-1 rounded text-green-600 hover:bg-green-50"
-              title="שמור"
-            >
+            <button onClick={saveEdit} disabled={savingEdit} className="p-1 rounded text-green-600 hover:bg-green-50" title="שמור">
               {savingEdit ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
             </button>
             <button onClick={cancelEdit} className="p-1 rounded text-slate-400 hover:bg-slate-100" title="ביטול">
@@ -109,26 +104,14 @@ function NodeRow({
               {node.name}
             </button>
             <span className="text-xs text-slate-400 ml-2 flex-shrink-0">דור {node.generation}</span>
-            <div className="flex items-center gap-1 flex-shrink-0 sm:opacity-60 sm:group-hover:opacity-100 transition-opacity">
-              <button
-                onClick={startEdit}
-                className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                title="ערוך שם"
-              >
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button onClick={startEdit} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700" title="ערוך שם">
                 <Pencil size={14} />
               </button>
-              <button
-                onClick={() => onAddChild(node.id, node.name)}
-                className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50"
-                title="הוסף צאצא"
-              >
+              <button onClick={() => onAddChild(node.id, node.name)} className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50" title="הוסף צאצא">
                 <Plus size={14} />
               </button>
-              <button
-                onClick={() => onDelete(node.id, node.name)}
-                className="p-1.5 rounded-lg text-red-500 hover:bg-red-50"
-                title="מחק"
-              >
+              <button onClick={() => onDelete(node.id, node.name)} className="p-1.5 rounded-lg text-red-500 hover:bg-red-50" title="מחק">
                 <Trash2 size={14} />
               </button>
             </div>
@@ -139,14 +122,7 @@ function NodeRow({
       {expanded && hasChildren && (
         <div>
           {node.children.map(child => (
-            <NodeRow
-              key={child.id}
-              node={child}
-              depth={depth + 1}
-              onAddChild={onAddChild}
-              onDelete={onDelete}
-              onEdit={onEdit}
-            />
+            <NodeRow key={child.id} node={child} depth={depth + 1} onAddChild={onAddChild} onDelete={onDelete} onEdit={onEdit} />
           ))}
         </div>
       )}
@@ -264,54 +240,41 @@ export default function LineageTreeManager() {
       </div>
 
       <p className="text-xs text-slate-500 -mt-1">
-        לחץ על שם כדי לערוך אותו · <Plus size={11} className="inline -mt-0.5 text-indigo-600" /> להוספת צאצא · <Trash2 size={11} className="inline -mt-0.5 text-red-500" /> למחיקה
+        לחץ על שם כדי לערוך · <Plus size={11} className="inline -mt-0.5 text-indigo-600" /> להוספת צאצא · <Trash2 size={11} className="inline -mt-0.5 text-red-500" /> למחיקה
       </p>
 
-      {/* Add form */}
       {showForm && (
         <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-indigo-800">
               {formParentId ? `הוסף צאצא של: ${formParentName}` : 'הוסף שורש חדש'}
             </p>
-            <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600">
-              <X size={16} />
-            </button>
+            <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
           </div>
           <input
-            type="text"
-            value={formName}
-            onChange={e => setFormName(e.target.value)}
+            type="text" value={formName} onChange={e => setFormName(e.target.value)}
             placeholder="שם (למשל: רבי אברהם שמואל בנימין סופר)"
             className="rounded-lg border border-indigo-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            autoFocus
-            onKeyDown={e => e.key === 'Enter' && handleSave()}
+            autoFocus onKeyDown={e => e.key === 'Enter' && handleSave()}
           />
           <input
-            type="text"
-            value={formNotes}
-            onChange={e => setFormNotes(e.target.value)}
+            type="text" value={formNotes} onChange={e => setFormNotes(e.target.value)}
             placeholder="הערות (אופציונלי)"
             className="rounded-lg border border-indigo-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
           />
           {error && <p className="text-xs text-red-600">{error}</p>}
           <div className="flex gap-2">
-            <button
-              onClick={handleSave}
-              disabled={saving}
+            <button onClick={handleSave} disabled={saving}
               className="flex items-center gap-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white px-3 py-1.5 rounded-lg transition-colors"
             >
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
               שמור
             </button>
-            <button onClick={() => setShowForm(false)} className="text-sm text-slate-500 hover:text-slate-700 px-3 py-1.5">
-              ביטול
-            </button>
+            <button onClick={() => setShowForm(false)} className="text-sm text-slate-500 hover:text-slate-700 px-3 py-1.5">ביטול</button>
           </div>
         </div>
       )}
 
-      {/* Tree */}
       <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
         {loading ? (
           <div className="flex items-center justify-center py-12 gap-2 text-slate-400">
@@ -319,20 +282,11 @@ export default function LineageTreeManager() {
             <span className="text-sm">טוען עץ דורות...</span>
           </div>
         ) : tree.length === 0 ? (
-          <div className="text-center py-12 text-slate-400 text-sm">
-            אין נתונים. הוסף שורש ראשון.
-          </div>
+          <div className="text-center py-12 text-slate-400 text-sm">אין נתונים. הוסף שורש ראשון.</div>
         ) : (
           <div className="p-2">
             {tree.map(node => (
-              <NodeRow
-                key={node.id}
-                node={node}
-                depth={0}
-                onAddChild={openAddChild}
-                onDelete={handleDelete}
-                onEdit={handleEdit}
-              />
+              <NodeRow key={node.id} node={node} depth={0} onAddChild={openAddChild} onDelete={handleDelete} onEdit={handleEdit} />
             ))}
           </div>
         )}
