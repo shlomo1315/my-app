@@ -24,8 +24,7 @@ async function getLoan(id: string): Promise<Loan | null> {
 }
 
 const fmtDate = (d?: string) => d ? format(new Date(d), 'dd/MM/yyyy', { locale: he }) : '—'
-const fmtCur = (n: number) =>
-  new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(n)
+const fmtCur = (n: number) => `₪${Math.round(Number(n) || 0).toLocaleString('he-IL')}`
 
 export default async function LoanDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -80,7 +79,7 @@ export default async function LoanDetailPage({ params }: { params: Promise<{ id:
             <p><span className="text-slate-500">מטרה: </span>{loan.purpose ?? '—'}</p>
             {loan.purpose_details && <p><span className="text-slate-500">פירוט מטרה: </span>{loan.purpose_details}</p>}
             {loan.declaration && <p><span className="text-slate-500">פנייה קודמת לגמ״ח: </span>{loan.declaration}</p>}
-            <p><span className="text-slate-500">תאריך פתיחה: </span><span className="ltr-num">{fmtDate(loan.created_at)}</span></p>
+            <p><span className="text-slate-500">תאריך הגשה: </span><span className="ltr-num">{fmtDate(loan.created_at)}</span></p>
           </div>
       </Card>
 
