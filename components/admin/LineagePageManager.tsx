@@ -299,7 +299,7 @@ export default function LineagePageManager() {
             </button>
           </div>
           <button onClick={() => openAdd()} className="flex items-center gap-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg">
-            <Plus size={14} /> הוסף שורש
+            <Plus size={14} /> הוסף רשומה
           </button>
         </div>
       </div>
@@ -324,7 +324,7 @@ export default function LineagePageManager() {
         <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-indigo-800">
-              {addParentId ? `הוסף צאצא של: ${addParentName}` : 'הוסף שורש חדש'}
+              {addParentId ? `הוסף צאצא של: ${addParentName}` : 'הוסף רשומה חדשה'}
             </p>
             <button onClick={() => setShowAdd(false)} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
           </div>
@@ -342,6 +342,21 @@ export default function LineagePageManager() {
                 placeholder="הערות (אופציונלי)"
                 className="w-full rounded-lg border border-indigo-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400" />
             </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-indigo-800 block mb-1">שייך להורה (דור קודם)</label>
+            <select value={addParentId ?? ''} onChange={e => { setAddParentId(e.target.value || null); setAddParentName(nodes.find(n => n.id === e.target.value)?.name ?? '') }}
+              className="w-full rounded-lg border border-indigo-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400">
+              <option value="">— ללא הורה (שורש / דור ראשון) —</option>
+              {[...nodes].sort((a, b) => a.generation - b.generation || a.name.localeCompare(b.name, 'he')).map(p => (
+                <option key={p.id} value={p.id}>{' '.repeat((p.generation - 1) * 3)}{p.name} (דור {p.generation})</option>
+              ))}
+            </select>
+            <p className="text-[11px] text-indigo-500/80 mt-1">
+              {addParentId
+                ? `הרשומה תתווסף כצאצא של "${addParentName}" — דור ${(nodes.find(n => n.id === addParentId)?.generation ?? 0) + 1}`
+                : 'הרשומה תתווסף כשורש בדור 1'}
+            </p>
           </div>
           {error && <p className="text-xs text-red-600">{error}</p>}
           <div className="flex gap-2">
@@ -366,7 +381,7 @@ export default function LineagePageManager() {
         ) : nodes.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3 text-slate-400">
             <GitBranch size={40} className="text-slate-200" />
-            <p className="text-sm">אין נתונים. לחץ על ״הוסף שורש״ להתחלה.</p>
+            <p className="text-sm">אין נתונים. לחץ על ״הוסף רשומה״ להתחלה.</p>
           </div>
         ) : view === 'tree' ? (
           <div className="p-2">
