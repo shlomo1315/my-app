@@ -3,7 +3,8 @@ import { HDate, HebrewCalendar, gematriya } from '@hebcal/core'
 
 export const dynamic = 'force-dynamic'
 
-const strip = (s: string) => s.replace(/[֑-ׇ]/g, '')
+// Replace maqaf (Hebrew hyphen ־) with space first, then strip all diacritics
+const strip = (s: string) => s.replace(/־/g, ' ').replace(/[֑-ׇ]/g, '')
 
 export async function GET() {
   try {

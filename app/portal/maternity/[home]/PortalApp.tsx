@@ -254,9 +254,7 @@ function DataView({ home, aids }: { home: string; aids: Aid[] }) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs text-slate-400 leading-none">היכל החתם סופר</p>
-            <h1 className="text-base font-bold text-slate-800 truncate flex items-center gap-1.5">
-              <Building2 size={14} className="text-indigo-500 flex-shrink-0" />{home}
-            </h1>
+            <h1 className="text-base font-bold text-slate-800 truncate">{home}</h1>
           </div>
           <div className="text-left text-xs text-slate-400 flex-shrink-0">
             <p>{format(today, 'EEEE', { locale: he })} · {format(today, 'd/M/yyyy')}</p>
