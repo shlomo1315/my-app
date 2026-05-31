@@ -44,13 +44,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'מפתח השירות (SERVICE_ROLE) אינו מוגדר בשרת' }, { status: 500 })
   }
 
-  let body: { full_name?: string; email?: string; password?: string; role?: string }
+  let body: { full_name?: string; email?: string; password?: string; role?: string; permissions?: Record<string, string> }
   try { body = await request.json() } catch { return NextResponse.json({ error: 'בקשה לא תקינה' }, { status: 400 }) }
 
   const full_name = String(body.full_name ?? '').trim()
   const email = String(body.email ?? '').toLowerCase().trim()
   const password = String(body.password ?? '')
   const role = String(body.role ?? '')
+  const permissions = body.permissions ?? {}
 
   if (!full_name) return NextResponse.json({ error: 'שם מלא חובה' }, { status: 400 })
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: 'אימייל לא תקין' }, { status: 400 })
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
 
   // יצירת פרופיל מקושר
   const { error: profErr } = await admin.from('profiles').insert({
-    id: created.user.id, email, full_name, role, is_active: true,
+    id: created.user.id, email, full_name, role, is_active: true, permissions,
   })
   if (profErr) {
     // ניקוי: אם הפרופיל נכשל, מחק את משתמש האימות שנוצר

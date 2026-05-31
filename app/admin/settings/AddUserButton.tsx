@@ -2,9 +2,28 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, Loader2, UserPlus, Check, AlertTriangle, Eye, EyeOff } from 'lucide-react'
-import { ROLE_LABELS, type UserRole } from '@/types'
+import { ROLE_LABELS, type UserRole, type SectionKey, type PermissionLevel, type UserPermissions } from '@/types'
 
 const ROLES: UserRole[] = ['admin', 'secretary']
+
+const SECTIONS: { key: SectionKey; label: string }[] = [
+  { key: 'beneficiaries', label: 'נתמכים' },
+  { key: 'maternity',     label: 'יולדות' },
+  { key: 'loans',         label: 'הלוואות' },
+  { key: 'distributions', label: 'חלוקות' },
+  { key: 'reports',       label: 'דוחות' },
+  { key: 'lineage',       label: 'עץ הדורות' },
+]
+
+const LEVELS: { value: PermissionLevel; label: string; color: string }[] = [
+  { value: 'none', label: 'ללא',    color: 'bg-red-100 text-red-600 border-red-300' },
+  { value: 'view', label: 'צפייה', color: 'bg-sky-100 text-sky-700 border-sky-200' },
+  { value: 'edit', label: 'עריכה', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+  { value: 'add',  label: 'הוספה', color: 'bg-green-100 text-green-700 border-green-200' },
+]
+
+const defaultPerms = (): UserPermissions =>
+  Object.fromEntries(SECTIONS.map(s => [s.key, 'view' as PermissionLevel])) as UserPermissions
 
 export default function AddUserButton() {
   const router = useRouter()
@@ -18,9 +37,16 @@ export default function AddUserButton() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<UserRole>('secretary')
+  const [permissions, setPermissions] = useState<UserPermissions>(defaultPerms())
+
+  const setSection = (key: SectionKey, level: PermissionLevel) =>
+    setPermissions(p => ({ ...p, [key]: level }))
+
+  const isAdmin = role === 'admin'
 
   const reset = () => {
     setFullName(''); setEmail(''); setPassword(''); setRole('secretary')
+    setPermissions(defaultPerms())
     setError(''); setDone(false); setShowPw(false)
   }
 
@@ -33,7 +59,7 @@ export default function AddUserButton() {
       const res = await fetch('/api/admin/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ full_name: fullName, email, password, role }),
+        body: JSON.stringify({ full_name: fullName, email, password, role, permissions: isAdmin ? {} : permissions }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'שגיאה ביצירת המשתמש'); setSaving(false); return }
@@ -56,7 +82,7 @@ export default function AddUserButton() {
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4" onClick={close}>
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200">
               <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2"><UserPlus size={16} className="text-indigo-500" /> הוספת משתמש מערכת</h3>
               <button onClick={close} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
@@ -100,6 +126,51 @@ export default function AddUserButton() {
                     ))}
                   </div>
                 </div>
+
+                {!isAdmin && (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-slate-700">הרשאות גישה למחלקות</label>
+                      <div className="flex gap-2 text-xs text-slate-400">
+                        {LEVELS.map(l => (
+                          <span key={l.value} className={`px-1.5 py-0.5 rounded border text-[10px] font-medium ${l.color}`}>{l.label}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 overflow-hidden">
+                      {SECTIONS.map((section, idx) => {
+                        const current = permissions[section.key] ?? 'view'
+                        return (
+                          <div key={section.key} className={`flex items-center justify-between px-4 py-2.5 ${idx < SECTIONS.length - 1 ? 'border-b border-slate-100' : ''}`}>
+                            <span className="text-sm font-medium text-slate-700">{section.label}</span>
+                            <div className="flex gap-1">
+                              {LEVELS.map(level => (
+                                <button key={level.value} type="button"
+                                  onClick={() => setSection(section.key, level.value)}
+                                  className={`px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors ${
+                                    current === level.value
+                                      ? level.color + ' shadow-sm'
+                                      : 'border-slate-200 text-slate-400 hover:bg-slate-50'
+                                  }`}>
+                                  {level.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <p className="text-xs text-slate-400">
+                      צפייה — קריאה בלבד · עריכה — שינוי נתונים קיימים · הוספה — כולל הוספת רשומות חדשות
+                    </p>
+                  </div>
+                )}
+
+                {isAdmin && (
+                  <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-xs text-indigo-700">
+                    מנהל מערכת — גישה מלאה לכל המחלקות ללא הגבלה
+                  </div>
+                )}
 
                 {error && (
                   <div className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg p-2.5">
