@@ -274,7 +274,7 @@ function DataView({ home, aids }: { home: string; aids: Aid[] }) {
         <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
           <Baby size={14} className="text-indigo-500 flex-shrink-0" />
           <p className="text-xs text-indigo-700">
-            מוצגות <strong>{filtered.length}</strong> יולדות מאושרות בתוך תקופת 6 השבועות.
+            מוצגות <strong>{filtered.length}</strong> יולדות מאושרות.
             רשימה זו לקריאה בלבד · מתעדכנת אוטומטית.
           </p>
         </div>
