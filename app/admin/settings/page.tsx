@@ -3,6 +3,7 @@ import Card from '@/components/ui/Card'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
 import { Profile, ROLE_LABELS } from '@/types'
 import LineageTreeManager from '@/components/admin/LineageTreeManager'
+import AddUserButton from './AddUserButton'
 
 async function getProfiles(): Promise<Profile[]> {
   if (!isSupabaseConfigured()) return []
@@ -52,7 +53,7 @@ export default async function SettingsPage() {
               <Users size={16} className="text-indigo-500" />
               <h2 className="text-sm font-semibold text-slate-700">משתמשי מערכת</h2>
             </div>
-            <button className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">+ הוסף משתמש</button>
+            <AddUserButton />
           </div>
           {profiles.length === 0 ? (
             <div className="p-8 text-center text-slate-400 text-sm">
