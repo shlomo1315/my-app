@@ -262,6 +262,7 @@ interface FormState {
   spouse_name: string
   spouse_id_number: string
   spouse_doc_type: 'id' | 'passport'
+  spouse_birth_date: string
   children_count: string
   notes: string
   lineage_node_id: string
@@ -296,6 +297,7 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
     spouse_name: defaultValues?.spouse_name ?? '',
     spouse_id_number: defaultValues?.spouse_id_number ?? '',
     spouse_doc_type: defaultValues?.spouse_doc_type ?? 'id',
+    spouse_birth_date: defaultValues?.spouse_birth_date ?? '',
     children_count: String(defaultValues?.children_count ?? '0'),
     notes: defaultValues?.notes ?? '',
     lineage_node_id: defaultValues?.lineage_node_id ?? '',
@@ -358,6 +360,7 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
       else if (form.spouse_doc_type === 'id' && !validateIsraeliId(form.spouse_id_number)) {
         errs.spouse_id_number = 'תעודת זהות ישראלית לא תקינה (כולל ספרת ביקורת)'
       }
+      if (!form.spouse_birth_date) errs.spouse_birth_date = 'שדה חובה'
     }
 
     if (!form.phone.trim()) errs.phone = 'שדה חובה'
@@ -409,6 +412,7 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
           ? ((form.spouse_doc_type === 'id' ? form.spouse_id_number.replace(/\D/g, '') : form.spouse_id_number.trim()) || null)
           : null,
         spouse_doc_type: showWifeFields ? form.spouse_doc_type : null,
+        spouse_birth_date: showWifeFields ? (form.spouse_birth_date || null) : null,
         children_count: children.length,
         children: children.map(c => ({
           name: c.name.trim(),
@@ -562,6 +566,9 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
                 onDocType={t => setForm(f => ({ ...f, spouse_doc_type: t }))}
                 onValue={v => setForm(f => ({ ...f, spouse_id_number: v }))}
               />
+              <Field label="תאריך לידה האישה" required error={errors.spouse_birth_date}>
+                <FInput type="date" value={form.spouse_birth_date} onChange={set('spouse_birth_date')} dir="ltr" required />
+              </Field>
             </div>
           )}
         </Section>

@@ -1,13 +1,13 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowRight, Phone, MapPin, Calendar, Users, Edit } from 'lucide-react'
+import { ArrowRight, Phone, MapPin, Calendar, Users, GitBranch, ChevronLeft } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
 import { Beneficiary } from '@/types'
 import StatusBadge from '@/components/ui/StatusBadge'
 import Card from '@/components/ui/Card'
-import { GENDER_LABELS } from '@/types'
 import { format } from 'date-fns'
 import { he } from 'date-fns/locale'
+import BeneficiaryActions from './BeneficiaryActions'
 
 async function getBeneficiary(id: string): Promise<Beneficiary | null> {
   if (!isSupabaseConfigured()) return null
@@ -24,9 +24,34 @@ async function getBeneficiary(id: string): Promise<Beneficiary | null> {
   }
 }
 
+// Walk the lineage tree from the selected node up to the root → ordered path of names
+async function getLineagePath(nodeId?: string): Promise<string[]> {
+  if (!nodeId || !isSupabaseConfigured()) return []
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('lineage_nodes')
+      .select('id, name, parent_id')
+    if (!data) return []
+    const map = new Map(data.map(n => [n.id, n]))
+    const path: string[] = []
+    let cur = map.get(nodeId)
+    let guard = 0
+    while (cur && guard < 50) {
+      path.unshift(cur.name)
+      cur = cur.parent_id ? map.get(cur.parent_id) : undefined
+      guard++
+    }
+    return path
+  } catch {
+    return []
+  }
+}
+
 export default async function BeneficiaryDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const beneficiary = await getBeneficiary(id)
+  const lineagePath = await getLineagePath(beneficiary?.lineage_node_id)
 
   if (!beneficiary && isSupabaseConfigured()) notFound()
 
@@ -61,14 +86,9 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
             <p className="text-sm text-slate-500 ltr-num">{beneficiary.id_number}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <StatusBadge status={beneficiary.eligibility_status} />
-          <Link href={`/admin/beneficiaries/${id}/edit`}>
-            <button className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-indigo-600 border border-slate-300 hover:border-indigo-300 rounded-lg px-3 py-1.5 transition-colors">
-              <Edit size={14} />
-              עריכה
-            </button>
-          </Link>
+          <BeneficiaryActions id={id} name={[beneficiary.family_name, beneficiary.full_name].filter(Boolean).join(' ')} />
         </div>
       </div>
 
@@ -105,6 +125,40 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
             {beneficiary.spouse_id_number && (
               <DetailRow label={beneficiary.spouse_doc_type === 'passport' ? 'דרכון' : 'ת.ז.'} value={beneficiary.spouse_id_number} ltr />
             )}
+            {beneficiary.spouse_birth_date && (
+              <DetailRow label="תאריך לידה" value={formatDate(beneficiary.spouse_birth_date)} />
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* ── Lineage / generations ── */}
+      {(lineagePath.length > 0 || (Array.isArray(beneficiary.lineage_manual) && beneficiary.lineage_manual.length > 0)) && (
+        <Card>
+          <div className="flex items-center gap-2 mb-3">
+            <GitBranch size={16} className="text-indigo-500" />
+            <h2 className="text-xs font-semibold text-slate-500 uppercase">שיוך שושלת</h2>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {lineagePath.map((name, i) => (
+              <span key={`t-${i}`} className="flex items-center gap-1.5">
+                {i > 0 && <ChevronLeft size={12} className="text-slate-300" />}
+                <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                  <span className="text-indigo-400 ml-1">דור {i + 1}</span>
+                  {name}
+                </span>
+              </span>
+            ))}
+            {Array.isArray(beneficiary.lineage_manual) &&
+              (beneficiary.lineage_manual as string[]).map((name, i) => (
+                <span key={`m-${i}`} className="flex items-center gap-1.5">
+                  <ChevronLeft size={12} className="text-slate-300" />
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
+                    <span className="text-amber-400 ml-1">דור {lineagePath.length + 1 + i}</span>
+                    {name}
+                  </span>
+                </span>
+              ))}
           </div>
         </Card>
       )}
