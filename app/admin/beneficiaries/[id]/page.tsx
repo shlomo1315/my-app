@@ -78,7 +78,7 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
           <div className="space-y-2.5">
             <DetailRow label="שם משפחה" value={beneficiary.family_name ?? '—'} />
             <DetailRow label="שם פרטי" value={beneficiary.full_name} />
-            <DetailRow label="ת.ז." value={beneficiary.id_number} ltr />
+            <DetailRow label={beneficiary.id_doc_type === 'passport' ? 'דרכון' : 'ת.ז.'} value={beneficiary.id_number} ltr />
             <DetailRow label="תאריך לידה" value={formatDate(beneficiary.birth_date)} />
             <DetailRow label="מצב משפחתי" value={beneficiary.marital_status ?? '—'} />
             <DetailRow label="מספר ילדים" value={String(beneficiary.children_count)} />
@@ -103,7 +103,7 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
           <div className="space-y-2.5">
             <DetailRow label="שם" value={beneficiary.spouse_name} />
             {beneficiary.spouse_id_number && (
-              <DetailRow label="ת.ז." value={beneficiary.spouse_id_number} ltr />
+              <DetailRow label={beneficiary.spouse_doc_type === 'passport' ? 'דרכון' : 'ת.ז.'} value={beneficiary.spouse_id_number} ltr />
             )}
           </div>
         </Card>

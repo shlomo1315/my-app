@@ -29,6 +29,7 @@ export interface Family {
 export interface Beneficiary {
   id: string
   id_number: string
+  id_doc_type?: string
   family_name?: string
   full_name: string
   phone?: string
@@ -42,6 +43,7 @@ export interface Beneficiary {
   marital_status?: string
   spouse_name?: string
   spouse_id_number?: string
+  spouse_doc_type?: string
   lineage_node_id?: string
   children_count: number
   children?: { name: string; id_number: string | null; gender: string | null; birth_date: string | null }[]

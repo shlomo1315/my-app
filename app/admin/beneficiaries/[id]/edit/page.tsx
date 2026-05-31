@@ -20,6 +20,7 @@ export default async function EditBeneficiaryPage({ params }: { params: Promise<
     ? {
         family_name: b.family_name ?? '',
         id_number: b.id_number ?? '',
+        id_doc_type: (b.id_doc_type === 'passport' ? 'passport' : 'id') as 'id' | 'passport',
         full_name: b.full_name ?? '',
         phone: b.phone ?? '',
         phone2: b.phone2 ?? '',
@@ -31,6 +32,7 @@ export default async function EditBeneficiaryPage({ params }: { params: Promise<
         marital_status: b.marital_status ?? '',
         spouse_name: b.spouse_name ?? '',
         spouse_id_number: b.spouse_id_number ?? '',
+        spouse_doc_type: (b.spouse_doc_type === 'passport' ? 'passport' : 'id') as 'id' | 'passport',
         children_count: String(b.children_count ?? 0),
         notes: b.notes ?? '',
         lineage_node_id: b.lineage_node_id ?? '',
