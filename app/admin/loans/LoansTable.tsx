@@ -1,8 +1,8 @@
 'use client'
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { CreditCard, Clock, Check, AlertTriangle, Eye, Search, Layers } from 'lucide-react'
-import StatusBadge from '@/components/ui/StatusBadge'
+import { Clock, Check, AlertTriangle, Eye, Search, Layers } from 'lucide-react'
+import { LoanStatusControl, DeleteLoanButton } from './LoanControls'
 import type { Loan } from '@/types'
 import { format } from 'date-fns'
 import { he } from 'date-fns/locale'
@@ -93,14 +93,14 @@ export default function LoansTable({ data }: { data: Loan[] }) {
           <table className="w-full text-sm text-right">
             <thead>
               <tr className="bg-gradient-to-b from-slate-50 to-slate-100/60 border-b border-slate-200">
-                {['שם הלווה', 'ת.ז.', 'סכום', 'תשלום חודשי', 'תשלומים', 'מטרה', 'תאריך פתיחה', 'סטטוס', 'פעולות'].map(h => (
+                {['שם הלווה', 'ת.ז.', 'סכום', 'תשלומים', 'מטרה', 'תאריך פתיחה', 'סטטוס', 'פעולות'].map(h => (
                   <th key={h} className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap align-middle">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-400">לא נמצאו הלוואות בסינון זה</td></tr>
+                <tr><td colSpan={8} className="px-4 py-12 text-center text-slate-400">לא נמצאו הלוואות בסינון זה</td></tr>
               ) : filtered.map(loan => {
                 const b = loan.beneficiary as BenRef | undefined
                 return (
@@ -108,16 +108,18 @@ export default function LoansTable({ data }: { data: Loan[] }) {
                     <td className="px-4 py-3.5 align-middle font-medium text-slate-800 whitespace-nowrap">{borrowerName(b)}</td>
                     <td className="px-4 py-3.5 align-middle text-xs font-mono text-slate-500"><span className="ltr-num">{b?.id_number ?? '—'}</span></td>
                     <td className="px-4 py-3.5 align-middle font-semibold text-slate-900"><span className="ltr-num">{fmtCur(loan.amount)}</span></td>
-                    <td className="px-4 py-3.5 align-middle text-slate-600"><span className="ltr-num">{fmtCur(loan.monthly_payment)}</span></td>
                     <td className="px-4 py-3.5 align-middle text-center text-slate-600">{loan.installments}</td>
                     <td className="px-4 py-3.5 align-middle text-slate-600 max-w-[140px] truncate">{loan.purpose ?? '—'}</td>
                     <td className="px-4 py-3.5 align-middle text-slate-500 text-xs"><span className="ltr-num">{fmtDate(loan.created_at)}</span></td>
-                    <td className="px-4 py-3.5 align-middle"><StatusBadge status={loan.status} /></td>
+                    <td className="px-4 py-3.5 align-middle"><LoanStatusControl loan={loan} /></td>
                     <td className="px-4 py-3.5 align-middle">
-                      <Link href={`/admin/loans/${loan.id}`}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors">
-                        <Eye size={14} /> צפייה
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <Link href={`/admin/loans/${loan.id}`}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors">
+                          <Eye size={14} /> צפייה
+                        </Link>
+                        <DeleteLoanButton loanId={loan.id} />
+                      </div>
                     </td>
                   </tr>
                 )
