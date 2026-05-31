@@ -50,7 +50,14 @@ export default function DataTable<T extends { id: string }>({
     ? [...filtered].sort((a, b) => {
         const av = (a as Record<string, unknown>)[sortKey]
         const bv = (b as Record<string, unknown>)[sortKey]
-        const cmp = String(av ?? '').localeCompare(String(bv ?? ''), 'he')
+        let cmp: number
+        if (typeof av === 'number' && typeof bv === 'number') {
+          cmp = av - bv
+        } else if (typeof av === 'boolean' && typeof bv === 'boolean') {
+          cmp = (av === bv) ? 0 : av ? 1 : -1
+        } else {
+          cmp = String(av ?? '').localeCompare(String(bv ?? ''), 'he', { numeric: true })
+        }
         return sortDir === 'asc' ? cmp : -cmp
       })
     : filtered
