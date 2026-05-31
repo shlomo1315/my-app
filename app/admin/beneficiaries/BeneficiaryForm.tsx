@@ -186,6 +186,7 @@ function FInput({ className = '', ...props }: React.InputHTMLAttributes<HTMLInpu
 }
 
 interface FormState {
+  family_name: string
   id_number: string
   full_name: string
   phone: string
@@ -217,6 +218,7 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
   const isEdit = !!beneficiaryId
 
   const [form, setForm] = useState<FormState>({
+    family_name: defaultValues?.family_name ?? '',
     id_number: defaultValues?.id_number ?? '',
     full_name: defaultValues?.full_name ?? '',
     phone: defaultValues?.phone ?? '',
@@ -270,6 +272,8 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
 
     if (!form.marital_status) errs.marital_status = 'יש לבחור מצב משפחתי'
 
+    if (!form.family_name.trim()) errs.family_name = 'שדה חובה'
+
     if (!form.id_number.trim()) errs.id_number = 'שדה חובה'
     else if (!validateIsraeliId(form.id_number)) errs.id_number = 'ת.ז. לא תקינה'
 
@@ -314,6 +318,7 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
     setSaving(true)
     try {
       const payload = {
+        family_name: form.family_name.trim(),
         id_number: form.id_number.replace(/\D/g, ''),
         full_name: form.full_name.trim(),
         phone: form.phone || null,
@@ -410,8 +415,11 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
       {showHusbandSection && (
         <Section title="פרטי הבעל" icon={User}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="שם הבעל" required error={errors.full_name}>
-              <FInput value={form.full_name} onChange={set('full_name')} placeholder="שם מלא" required />
+            <Field label="שם משפחה" required error={errors.family_name}>
+              <FInput value={form.family_name} onChange={set('family_name')} placeholder="שם משפחה" required />
+            </Field>
+            <Field label="שם הבעל (שם פרטי)" required error={errors.full_name}>
+              <FInput value={form.full_name} onChange={set('full_name')} placeholder="שם פרטי" required />
             </Field>
             <Field label="תעודת זהות" required error={errors.id_number}>
               <FInput
@@ -440,8 +448,11 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
           {primaryIsWife ? (
             /* Woman is primary person (גרושה / אלמנה) */
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="שם האישה" required error={errors.full_name}>
-                <FInput value={form.full_name} onChange={set('full_name')} placeholder="שם מלא" required />
+              <Field label="שם משפחה" required error={errors.family_name}>
+                <FInput value={form.family_name} onChange={set('family_name')} placeholder="שם משפחה" required />
+              </Field>
+              <Field label="שם האישה (שם פרטי)" required error={errors.full_name}>
+                <FInput value={form.full_name} onChange={set('full_name')} placeholder="שם פרטי" required />
               </Field>
               <Field label="תעודת זהות" required error={errors.id_number}>
                 <FInput

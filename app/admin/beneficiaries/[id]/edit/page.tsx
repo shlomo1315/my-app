@@ -18,6 +18,7 @@ export default async function EditBeneficiaryPage({ params }: { params: Promise<
 
   const defaultValues = b
     ? {
+        family_name: b.family_name ?? '',
         id_number: b.id_number ?? '',
         full_name: b.full_name ?? '',
         phone: b.phone ?? '',

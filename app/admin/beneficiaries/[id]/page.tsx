@@ -57,7 +57,7 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
             <ArrowRight size={20} />
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">{beneficiary.full_name}</h1>
+            <h1 className="text-xl font-bold text-slate-900">{[beneficiary.family_name, beneficiary.full_name].filter(Boolean).join(' ')}</h1>
             <p className="text-sm text-slate-500 ltr-num">{beneficiary.id_number}</p>
           </div>
         </div>
@@ -76,7 +76,8 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
         <Card>
           <h2 className="text-xs font-semibold text-slate-500 uppercase mb-3">פרטי הבעל</h2>
           <div className="space-y-2.5">
-            <DetailRow label="שם" value={beneficiary.full_name} />
+            <DetailRow label="שם משפחה" value={beneficiary.family_name ?? '—'} />
+            <DetailRow label="שם פרטי" value={beneficiary.full_name} />
             <DetailRow label="ת.ז." value={beneficiary.id_number} ltr />
             <DetailRow label="תאריך לידה" value={formatDate(beneficiary.birth_date)} />
             <DetailRow label="מצב משפחתי" value={beneficiary.marital_status ?? '—'} />

@@ -29,6 +29,7 @@ export interface Family {
 export interface Beneficiary {
   id: string
   id_number: string
+  family_name?: string
   full_name: string
   phone?: string
   phone2?: string
