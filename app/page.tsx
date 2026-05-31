@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import {
   Building2,
   Mail,
@@ -10,13 +10,97 @@ import {
   Loader2,
   Phone,
   MapPin,
-  Calendar,
   Users,
-  ChevronRight,
   Clock,
+  GitBranch,
+  ChevronLeft,
 } from 'lucide-react'
 
 type Step = 'email' | 'otp' | 'form' | 'success' | 'already-registered'
+
+interface LineageNode {
+  id: string
+  name: string
+  generation: number
+  parent_id: string | null
+}
+
+function LineageCascade({
+  onSelect,
+}: {
+  onSelect: (nodeId: string, path: string[]) => void
+}) {
+  const [levels, setLevels] = useState<{ nodes: LineageNode[]; selected: string | null; selectedName: string }[]>([])
+  const [loadingLevel, setLoadingLevel] = useState<number | null>(null)
+
+  const loadLevel = useCallback(async (parentId: string | null, levelIdx: number) => {
+    setLoadingLevel(levelIdx)
+    try {
+      const url = parentId ? `/api/lineage?parent_id=${parentId}` : '/api/lineage'
+      const res = await fetch(url)
+      const data = await res.json()
+      setLevels(prev => {
+        const next = prev.slice(0, levelIdx)
+        if ((data.nodes ?? []).length > 0) {
+          next.push({ nodes: data.nodes, selected: null, selectedName: '' })
+        }
+        return next
+      })
+    } catch { /* ignore */ }
+    setLoadingLevel(null)
+  }, [])
+
+  useEffect(() => { loadLevel(null, 0) }, [loadLevel])
+
+  const handleSelect = async (levelIdx: number, node: LineageNode) => {
+    setLevels(prev => prev.slice(0, levelIdx + 1).map((l, i) =>
+      i === levelIdx ? { ...l, selected: node.id, selectedName: node.name } : l
+    ))
+    const currentPath = levels.slice(0, levelIdx).map(l => l.selectedName).concat(node.name)
+    await loadLevel(node.id, levelIdx + 1)
+    // After loading, check if there are children — if not, it's a final selection
+    setLevels(prev => {
+      const hasNextLevel = prev.length > levelIdx + 1
+      if (!hasNextLevel) {
+        onSelect(node.id, currentPath)
+      }
+      return prev
+    })
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {levels.map((level, idx) => (
+        <div key={idx}>
+          <p className="text-xs text-slate-500 mb-1.5">
+            {idx === 0 ? 'דור ראשון' : `דור ${idx + 1}`}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {level.nodes.map(node => (
+              <button
+                key={node.id}
+                type="button"
+                onClick={() => handleSelect(idx, node)}
+                className={`text-sm px-3 py-2 rounded-lg border transition-colors text-right ${
+                  level.selected === node.id
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : 'bg-white text-slate-700 border-slate-300 hover:border-indigo-400 hover:bg-indigo-50'
+                }`}
+              >
+                {node.name}
+              </button>
+            ))}
+            {loadingLevel === idx && (
+              <span className="flex items-center gap-1 text-xs text-slate-400">
+                <Loader2 size={12} className="animate-spin" /> טוען...
+              </span>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'בטיפול',
@@ -149,6 +233,10 @@ export default function PublicRegistrationPage() {
   } | null>(null)
   const otpRefs = useRef<(HTMLInputElement | null)[]>([])
 
+  // Lineage
+  const [lineageNodeId, setLineageNodeId] = useState('')
+  const [lineagePath, setLineagePath] = useState<string[]>([])
+
   // Form fields
   const [form, setForm] = useState({
     id_number: '',
@@ -259,7 +347,7 @@ export default function PublicRegistrationPage() {
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, email, nonce, children_count: parseInt(form.children_count || '0') }),
+        body: JSON.stringify({ ...form, email, nonce, children_count: parseInt(form.children_count || '0'), lineage_node_id: lineageNodeId || null }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -532,6 +620,44 @@ export default function PublicRegistrationPage() {
                   </Field>
                 </div>
               </div>
+            </div>
+
+            {/* Lineage */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+              <div className="flex items-center gap-2 mb-1">
+                <GitBranch size={18} className="text-indigo-600" />
+                <h3 className="font-semibold text-slate-900">שיוך שושלת</h3>
+              </div>
+              <p className="text-xs text-slate-500 mb-4">
+                בחר את המשך השושלת שאתה שייך אליו. בחר מהדור הראשון ואז המשך לפי ענף המשפחה.
+              </p>
+              {lineagePath.length > 0 && (
+                <div className="flex items-center gap-1 flex-wrap mb-3">
+                  {lineagePath.map((name, i) => (
+                    <span key={i} className="flex items-center gap-1">
+                      {i > 0 && <ChevronLeft size={12} className="text-slate-400" />}
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${i === lineagePath.length - 1 ? 'bg-indigo-100 text-indigo-700 font-semibold' : 'bg-slate-100 text-slate-600'}`}>
+                        {name}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <LineageCascade
+                onSelect={(nodeId, path) => {
+                  setLineageNodeId(nodeId)
+                  setLineagePath(path)
+                }}
+              />
+              {lineageNodeId && (
+                <button
+                  type="button"
+                  onClick={() => { setLineageNodeId(''); setLineagePath([]) }}
+                  className="mt-3 text-xs text-slate-400 hover:text-slate-600 underline"
+                >
+                  נקה בחירה
+                </button>
+              )}
             </div>
 
             {/* Family */}

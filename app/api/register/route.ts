@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
     marital_status,
     children_count,
     notes,
+    lineage_node_id,
   } = body as Record<string, string | number | undefined>
 
   // Validate nonce
@@ -102,6 +103,7 @@ export async function POST(request: NextRequest) {
     marital_status: marital_status ? String(marital_status) : null,
     children_count: typeof children_count === 'number' ? children_count : parseInt(String(children_count || '0'), 10),
     notes: notes ? String(notes).trim() : null,
+    lineage_node_id: lineage_node_id ? String(lineage_node_id) : null,
     eligibility_status: 'pending',
     is_active: true,
   })
