@@ -8,6 +8,7 @@ import { validateIsraeliId } from '@/lib/validation'
 import { format, addWeeks } from 'date-fns'
 import { he } from 'date-fns/locale'
 import type { Beneficiary } from '@/types'
+import ConfettiSuccess from '@/components/ui/ConfettiSuccess'
 
 const RECOVERY_HOMES = ['אם וילד', 'טלזסטון', 'ביכורים']
 
@@ -40,6 +41,7 @@ export default function NewMaternityPage() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [savedInfo, setSavedInfo] = useState<{ name: string; details: string[] } | null>(null)
 
   const lookupMother = async () => {
     if (!idInput.trim()) return
@@ -172,7 +174,21 @@ export default function NewMaternityPage() {
         .update({ children: updatedChildren, children_count: updatedChildren.length })
         .eq('id', mother.id)
 
-      router.push(`/admin/maternity/${inserted.id}`)
+      // חלונית הצלחה עם קונפיטי — מציגה את הפרטים ל-3 שניות ואז נכנסת לכרטסת
+      const familyName = mother.spouse_name
+        ? [mother.family_name, mother.spouse_name].filter(Boolean).join(' ')
+        : [mother.family_name, mother.full_name].filter(Boolean).join(' ')
+      setSavedInfo({
+        name: familyName || 'המשפחה',
+        details: [
+          `תינוק/ת: ${babyName.trim()}`,
+          babyGender ? (babyGender === 'male' ? 'בן' : 'בת') : '',
+          babyIdNumber.trim() ? `ת.ז. ${babyIdNumber.trim()}` : '',
+          babyBirthDate ? `לידה ${format(new Date(babyBirthDate), 'dd/MM/yyyy', { locale: he })}` : '',
+          recoveryHome ? `בית החלמה: ${recoveryHome}` : '',
+        ].filter(Boolean),
+      })
+      setTimeout(() => router.push(`/admin/maternity/${inserted.id}`), 3000)
     } catch (e) {
       setSaveError('שגיאה בשמירה — נסה שוב')
       console.error(e)
