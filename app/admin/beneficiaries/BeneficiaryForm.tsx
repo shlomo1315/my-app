@@ -261,11 +261,12 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
     setChildren(prev => prev.map((c, i) => (i === idx ? { ...c, [key]: value } : c)))
 
   // Derived flags
+  const hasMaritalStatus = !!form.marital_status              // personal details appear only after a status is chosen
   const primaryIsWife = WIFE_PRIMARY_STATUSES.includes(form.marital_status)
   const primaryGender = primaryIsWife ? 'female' : 'male'
   const showWifeFields = form.marital_status === MARRIED_STATUS  // spouse data exists only when married
-  const showHusbandSection = !primaryIsWife                       // גרוש, אלמן, נשואים
-  const showWifeSection = primaryIsWife || showWifeFields         // גרושה, אלמנה, נשואים
+  const showHusbandSection = hasMaritalStatus && !primaryIsWife        // גרוש, אלמן, נשואים
+  const showWifeSection = hasMaritalStatus && (primaryIsWife || showWifeFields) // גרושה, אלמנה, נשואים
 
   const validate = (): boolean => {
     const errs: Partial<Record<keyof FormState, string>> = {}
