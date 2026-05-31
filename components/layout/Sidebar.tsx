@@ -17,6 +17,25 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 
+function LogoBadge() {
+  const [error, setError] = useState(false)
+  return (
+    <div className="flex-shrink-0 w-10 h-10 bg-white rounded-xl flex items-center justify-center overflow-hidden p-1 shadow-sm">
+      {error ? (
+        <Building2 size={18} className="text-indigo-600" />
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src="/logo.jpg"
+          alt="היכל החתם סופר"
+          className="w-full h-full object-contain"
+          onError={() => setError(true)}
+        />
+      )}
+    </div>
+  )
+}
+
 const navItems = [
   { href: '/admin/dashboard', label: 'לוח בקרה', icon: LayoutDashboard },
   { href: '/admin/beneficiaries', label: 'נתמכים', icon: Users },
@@ -34,12 +53,10 @@ export default function Sidebar() {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-3 px-4 py-5 border-b border-slate-800">
-        <div className="flex-shrink-0 w-9 h-9 bg-indigo-500 rounded-xl flex items-center justify-center">
-          <Building2 size={18} className="text-white" />
-        </div>
+        <LogoBadge />
         <div className="min-w-0">
-          <p className="text-sm font-bold text-white leading-tight truncate">מערכת עמותה</p>
-          <p className="text-xs text-slate-400 truncate">ניהול מרכזי</p>
+          <p className="text-sm font-bold text-white leading-tight truncate">היכל החתם סופר</p>
+          <p className="text-xs text-slate-400 truncate">תוכנת ניהול</p>
         </div>
       </div>
 

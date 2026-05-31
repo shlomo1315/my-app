@@ -83,25 +83,25 @@ export default function DataTable<T extends { id: string }>({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="w-full text-sm text-right">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+        <table className="w-full text-sm text-right border-collapse">
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50">
+            <tr className="bg-slate-50 border-b border-slate-200">
               {columns.map((col) => (
                 <th
                   key={String(col.key)}
-                  className={`px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide ${col.className ?? ''} ${col.sortable ? 'cursor-pointer hover:text-slate-700 select-none' : ''}`}
+                  className={`px-4 py-3 text-xs font-semibold text-slate-500 whitespace-nowrap ${col.className ?? ''} ${col.sortable ? 'cursor-pointer hover:text-slate-700 select-none' : ''}`}
                   onClick={() => col.sortable && toggleSort(String(col.key))}
                 >
-                  <div className="flex items-center gap-1 justify-end">
-                    {col.header}
+                  <div className="flex items-center gap-1">
+                    <span>{col.header}</span>
                     {col.sortable && sortKey === String(col.key) && (
-                      sortDir === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                      sortDir === 'asc' ? <ChevronUp size={13} /> : <ChevronDown size={13} />
                     )}
                   </div>
                 </th>
               ))}
-              {actions && <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">פעולות</th>}
+              {actions && <th className="px-4 py-3 text-xs font-semibold text-slate-500 whitespace-nowrap text-center">פעולות</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -109,11 +109,11 @@ export default function DataTable<T extends { id: string }>({
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i}>
                   {columns.map((col) => (
-                    <td key={String(col.key)} className="px-4 py-3">
+                    <td key={String(col.key)} className="px-4 py-3.5">
                       <div className="h-4 bg-slate-100 rounded animate-pulse" />
                     </td>
                   ))}
-                  {actions && <td className="px-4 py-3"><div className="h-4 w-16 bg-slate-100 rounded animate-pulse" /></td>}
+                  {actions && <td className="px-4 py-3.5"><div className="h-4 w-16 bg-slate-100 rounded animate-pulse mx-auto" /></td>}
                 </tr>
               ))
             ) : paged.length === 0 ? (
@@ -124,16 +124,16 @@ export default function DataTable<T extends { id: string }>({
               </tr>
             ) : (
               paged.map((row) => (
-                <tr key={row.id} className="hover:bg-slate-50 transition-colors">
+                <tr key={row.id} className="hover:bg-indigo-50/40 transition-colors">
                   {columns.map((col) => (
-                    <td key={String(col.key)} className={`px-4 py-3 text-slate-700 ${col.className ?? ''}`}>
+                    <td key={String(col.key)} className={`px-4 py-3.5 text-slate-700 align-middle whitespace-nowrap ${col.className ?? ''}`}>
                       {col.render
                         ? col.render(row)
                         : String((row as Record<string, unknown>)[String(col.key)] ?? '—')}
                     </td>
                   ))}
                   {actions && (
-                    <td className="px-4 py-3">{actions(row)}</td>
+                    <td className="px-4 py-3.5 align-middle text-center">{actions(row)}</td>
                   )}
                 </tr>
               ))
