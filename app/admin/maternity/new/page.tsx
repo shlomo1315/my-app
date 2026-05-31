@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowRight, Search, Loader2, Check, AlertTriangle, Upload, X, Baby } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { validateIsraeliId } from '@/lib/validation'
 import { format, addWeeks } from 'date-fns'
 import { he } from 'date-fns/locale'
 import type { Beneficiary } from '@/types'
@@ -37,6 +38,7 @@ export default function NewMaternityPage() {
   const [certFile, setCertFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const lookupMother = async () => {
     if (!idInput.trim()) return
@@ -58,9 +60,31 @@ export default function NewMaternityPage() {
     setLooking(false)
   }
 
+  const clearErr = (key: string) => setFieldErrors(p => {
+    if (!p[key]) return p
+    const next = { ...p }; delete next[key]; return next
+  })
+
+  const validate = (): Record<string, string> => {
+    const e: Record<string, string> = {}
+    if (!babyIdNumber.trim()) {
+      e.babyIdNumber = babyIdType === 'id' ? 'מספר תעודת זהות תינוק חובה' : 'מספר דרכון חובה'
+    } else if (babyIdType === 'id' && !validateIsraeliId(babyIdNumber)) {
+      e.babyIdNumber = 'תעודת זהות ישראלית לא תקינה (כולל ספרת ביקורת)'
+    }
+    if (!babyGender) e.babyGender = 'יש לבחור מין תינוק'
+    if (!babyBirthDate) e.babyBirthDate = 'תאריך לידת תינוק חובה'
+    if (!recoveryHome) e.recoveryHome = 'יש לבחור בית החלמה'
+    if (!certFile) e.certFile = 'יש לצרף אישור לידה'
+    if (!cardNumber.trim()) e.cardNumber = 'מספר כרטיס נדרים חובה'
+    return e
+  }
+
   const handleSubmit = async () => {
     if (!mother) return
-    if (!babyBirthDate) { setSaveError('תאריך לידת תינוק חובה'); return }
+    const errs = validate()
+    setFieldErrors(errs)
+    if (Object.keys(errs).length > 0) { setSaveError('יש למלא את כל השדות המסומנים'); return }
     setSaving(true); setSaveError('')
     try {
       let certUrl: string | undefined
@@ -187,44 +211,49 @@ export default function NewMaternityPage() {
 
             {/* ID type + number */}
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-medium text-slate-600">סוג מסמך תינוק</label>
+              <label className="text-xs font-medium text-slate-600">סוג מסמך תינוק <span className="text-red-500">*</span></label>
               <div className="flex gap-2">
                 {(['id', 'passport'] as const).map(t => (
-                  <button key={t} onClick={() => setBabyIdType(t)}
+                  <button key={t} onClick={() => { setBabyIdType(t); clearErr('babyIdNumber') }}
                     className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${babyIdType === t ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}>
                     {t === 'id' ? 'תעודת זהות' : 'דרכון'}
                   </button>
                 ))}
               </div>
               <input
-                type="text" value={babyIdNumber} onChange={e => setBabyIdNumber(e.target.value)}
+                type="text" value={babyIdNumber}
+                onChange={e => { setBabyIdNumber(e.target.value); clearErr('babyIdNumber') }}
                 placeholder={babyIdType === 'id' ? 'מספר תעודת זהות תינוק' : 'מספר דרכון תינוק'}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ltr-num text-left"
+                className={`rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ltr-num text-left ${fieldErrors.babyIdNumber ? 'border-red-400 focus:ring-red-400' : 'border-slate-300 focus:ring-indigo-500'}`}
                 dir="ltr"
               />
+              {fieldErrors.babyIdNumber && <p className="text-xs text-red-600">{fieldErrors.babyIdNumber}</p>}
             </div>
 
             {/* Gender */}
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-medium text-slate-600">מין התינוק</label>
+              <label className="text-xs font-medium text-slate-600">מין התינוק <span className="text-red-500">*</span></label>
               <div className="flex gap-2">
                 {([['male', 'זכר'], ['female', 'נקבה']] as const).map(([val, label]) => (
-                  <button key={val} onClick={() => setBabyGender(val)}
-                    className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${babyGender === val ? (val === 'male' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-pink-500 border-pink-500 text-white') : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}>
+                  <button key={val} onClick={() => { setBabyGender(val); clearErr('babyGender') }}
+                    className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${babyGender === val ? (val === 'male' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-pink-500 border-pink-500 text-white') : `${fieldErrors.babyGender ? 'border-red-400' : 'border-slate-300'} text-slate-600 hover:bg-slate-50`}`}>
                     {label}
                   </button>
                 ))}
               </div>
+              {fieldErrors.babyGender && <p className="text-xs text-red-600">{fieldErrors.babyGender}</p>}
             </div>
 
             {/* Birth date + 6 weeks calc */}
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-medium text-slate-600">תאריך לידת התינוק *</label>
+              <label className="text-xs font-medium text-slate-600">תאריך לידת התינוק <span className="text-red-500">*</span></label>
               <input
-                type="date" value={babyBirthDate} onChange={e => setBabyBirthDate(e.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                type="date" value={babyBirthDate}
+                onChange={e => { setBabyBirthDate(e.target.value); clearErr('babyBirthDate') }}
+                className={`rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${fieldErrors.babyBirthDate ? 'border-red-400 focus:ring-red-400' : 'border-slate-300 focus:ring-indigo-500'}`}
                 dir="ltr"
               />
+              {fieldErrors.babyBirthDate && <p className="text-xs text-red-600">{fieldErrors.babyBirthDate}</p>}
               {babyBirthDate && (
                 <div className="flex items-center gap-2 text-xs bg-indigo-50 text-indigo-700 rounded-lg px-3 py-2 border border-indigo-100">
                   <Baby size={13} />
@@ -235,22 +264,23 @@ export default function NewMaternityPage() {
 
             {/* Recovery home */}
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-medium text-slate-600">בית החלמה</label>
+              <label className="text-xs font-medium text-slate-600">בית החלמה <span className="text-red-500">*</span></label>
               <div className="flex gap-2">
                 {RECOVERY_HOMES.map(h => (
-                  <button key={h} onClick={() => setRecoveryHome(recoveryHome === h ? '' : h)}
-                    className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${recoveryHome === h ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}>
+                  <button key={h} onClick={() => { setRecoveryHome(recoveryHome === h ? '' : h); clearErr('recoveryHome') }}
+                    className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${recoveryHome === h ? 'bg-indigo-600 border-indigo-600 text-white' : `${fieldErrors.recoveryHome ? 'border-red-400' : 'border-slate-300'} text-slate-600 hover:bg-slate-50`}`}>
                     {h}
                   </button>
                 ))}
               </div>
+              {fieldErrors.recoveryHome && <p className="text-xs text-red-600">{fieldErrors.recoveryHome}</p>}
             </div>
 
             {/* Birth certificate */}
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-medium text-slate-600">אישור לידה (קובץ מצורף)</label>
+              <label className="text-xs font-medium text-slate-600">אישור לידה (קובץ מצורף) <span className="text-red-500">*</span></label>
               <input type="file" ref={fileRef} className="hidden" accept="image/*,.pdf"
-                onChange={e => setCertFile(e.target.files?.[0] ?? null)} />
+                onChange={e => { setCertFile(e.target.files?.[0] ?? null); clearErr('certFile') }} />
               {certFile ? (
                 <div className="flex items-center gap-2 text-sm bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-green-700">
                   <Check size={14} />
@@ -260,11 +290,12 @@ export default function NewMaternityPage() {
                 </div>
               ) : (
                 <button onClick={() => fileRef.current?.click()}
-                  className="flex items-center justify-center gap-2 border-2 border-dashed border-slate-300 hover:border-indigo-400 hover:bg-indigo-50 rounded-lg px-4 py-4 text-sm text-slate-500 hover:text-indigo-600 transition-colors">
+                  className={`flex items-center justify-center gap-2 border-2 border-dashed rounded-lg px-4 py-4 text-sm transition-colors ${fieldErrors.certFile ? 'border-red-400 text-red-500 hover:bg-red-50' : 'border-slate-300 text-slate-500 hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600'}`}>
                   <Upload size={16} />
                   לחץ להעלאת קובץ (תמונה / PDF)
                 </button>
               )}
+              {fieldErrors.certFile && <p className="text-xs text-red-600">{fieldErrors.certFile}</p>}
             </div>
           </div>
 
@@ -275,13 +306,15 @@ export default function NewMaternityPage() {
               כרטיס נדרים
             </h2>
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-medium text-slate-600">מספר כרטיס נדרים</label>
+              <label className="text-xs font-medium text-slate-600">מספר כרטיס נדרים <span className="text-red-500">*</span></label>
               <input
-                type="text" value={cardNumber} onChange={e => setCardNumber(e.target.value)}
+                type="text" value={cardNumber}
+                onChange={e => { setCardNumber(e.target.value); clearErr('cardNumber') }}
                 placeholder="0000-0000-0000-0000"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ltr-num text-left"
+                className={`rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ltr-num text-left ${fieldErrors.cardNumber ? 'border-red-400 focus:ring-red-400' : 'border-slate-300 focus:ring-indigo-500'}`}
                 dir="ltr"
               />
+              {fieldErrors.cardNumber && <p className="text-xs text-red-600">{fieldErrors.cardNumber}</p>}
             </div>
           </div>
 

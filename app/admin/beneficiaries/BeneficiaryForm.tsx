@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Button from '@/components/ui/Button'
 import { GitBranch, ChevronLeft, Loader2, Heart, User, Phone, MapPin, Users, FileText, Plus, X } from 'lucide-react'
+import { validateIsraeliId } from '@/lib/validation'
 
 const MARITAL_OPTIONS = ['נשואים', 'גרוש', 'גרושה', 'אלמן', 'אלמנה']
 const WIFE_PRIMARY_STATUSES = ['גרושה', 'אלמנה']
@@ -16,18 +17,6 @@ const STATUS_OPTIONS = [
 ]
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-function validateIsraeliId(raw: string): boolean {
-  const id = raw.replace(/\D/g, '').padStart(9, '0')
-  if (id.length !== 9) return false
-  let sum = 0
-  for (let i = 0; i < 9; i++) {
-    let d = parseInt(id[i]) * (i % 2 === 0 ? 1 : 2)
-    if (d > 9) d -= 9
-    sum += d
-  }
-  return sum % 10 === 0
-}
 
 interface ChildEntry {
   name: string
