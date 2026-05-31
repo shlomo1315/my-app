@@ -1,7 +1,7 @@
 'use client'
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Clock, Check, AlertTriangle, Eye, Search, Layers } from 'lucide-react'
+import { Clock, Check, X, Eye, Search, Layers } from 'lucide-react'
 import { LoanStatusControl, DeleteLoanButton } from './LoanControls'
 import type { Loan } from '@/types'
 import { format } from 'date-fns'
@@ -15,15 +15,22 @@ type BenRef = { full_name?: string; family_name?: string; id_number?: string; sp
 const borrowerName = (b?: BenRef) =>
   b ? ([b.family_name, b.spouse_name || b.full_name].filter(Boolean).join(' ') || b.full_name || '—') : '—'
 
-type Filter = 'all' | 'pending' | 'active' | 'defaulted'
-const matchesFilter = (l: Loan, f: Filter) => f === 'all' ? true : l.status === f
+type Filter = 'all' | 'pending' | 'approved' | 'rejected'
+const isApproved = (l: Loan) => l.status === 'approved' || l.status === 'active' || l.status === 'completed'
+const isRejected = (l: Loan) => l.status === 'rejected' || l.status === 'defaulted'
+const matchesFilter = (l: Loan, f: Filter) => {
+  if (f === 'all') return true
+  if (f === 'pending') return l.status === 'pending'
+  if (f === 'approved') return isApproved(l)
+  return isRejected(l)
+}
 
 interface CardDef { key: Filter; label: string; icon: typeof Clock; base: string; active: string; iconCls: string }
 const CARD_DEFS: CardDef[] = [
   { key: 'all', label: 'הכל', icon: Layers, base: 'border-slate-200 hover:border-slate-300', active: 'border-slate-400 ring-2 ring-slate-200 bg-slate-50', iconCls: 'bg-slate-100 text-slate-600' },
   { key: 'pending', label: 'ממתינות לאישור', icon: Clock, base: 'border-amber-200 hover:border-amber-300', active: 'border-amber-400 ring-2 ring-amber-200 bg-amber-50', iconCls: 'bg-amber-100 text-amber-700' },
-  { key: 'active', label: 'פעילות', icon: Check, base: 'border-green-200 hover:border-green-300', active: 'border-green-400 ring-2 ring-green-200 bg-green-50', iconCls: 'bg-green-100 text-green-700' },
-  { key: 'defaulted', label: 'בפיגור', icon: AlertTriangle, base: 'border-red-200 hover:border-red-300', active: 'border-red-400 ring-2 ring-red-200 bg-red-50', iconCls: 'bg-red-100 text-red-700' },
+  { key: 'approved', label: 'מאושרות', icon: Check, base: 'border-green-200 hover:border-green-300', active: 'border-green-400 ring-2 ring-green-200 bg-green-50', iconCls: 'bg-green-100 text-green-700' },
+  { key: 'rejected', label: 'לא מאושרות', icon: X, base: 'border-red-200 hover:border-red-300', active: 'border-red-400 ring-2 ring-red-200 bg-red-50', iconCls: 'bg-red-100 text-red-700' },
 ]
 
 const haystack = (l: Loan) => {
@@ -39,11 +46,9 @@ export default function LoansTable({ data }: { data: Loan[] }) {
   const counts = useMemo(() => ({
     all: data.length,
     pending: data.filter(l => l.status === 'pending').length,
-    active: data.filter(l => l.status === 'active').length,
-    defaulted: data.filter(l => l.status === 'defaulted').length,
+    approved: data.filter(isApproved).length,
+    rejected: data.filter(isRejected).length,
   }), [data])
-
-  const totalActive = useMemo(() => data.filter(l => l.status === 'active').reduce((s, l) => s + (Number(l.amount) || 0), 0), [data])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -71,12 +76,6 @@ export default function LoansTable({ data }: { data: Loan[] }) {
             </button>
           )
         })}
-      </div>
-
-      {/* Total active sum */}
-      <div className="bg-gradient-to-l from-blue-50 to-indigo-50 border border-blue-100 rounded-xl px-5 py-3 flex items-center justify-between">
-        <span className="text-sm font-medium text-slate-600">סך ההלוואות הפעילות</span>
-        <span className="text-lg font-bold text-blue-700 ltr-num">{fmtCur(totalActive)}</span>
       </div>
 
       {/* Table */}
