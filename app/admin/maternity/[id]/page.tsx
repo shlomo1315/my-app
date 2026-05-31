@@ -1,10 +1,11 @@
 import Link from 'next/link'
-import { ArrowRight, Baby, CreditCard, Home } from 'lucide-react'
+import { ArrowRight, Baby, CreditCard, Home, FileText } from 'lucide-react'
 import { notFound } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
 import { MaternityAid } from '@/types'
 import Card from '@/components/ui/Card'
 import { StatusControl } from '../MaternityTable'
+import MaternityActions from './MaternityActions'
 import { format } from 'date-fns'
 import { he } from 'date-fns/locale'
 
@@ -26,6 +27,8 @@ async function getAid(id: string): Promise<MaternityAid | null> {
 const fmtDate = (d?: string) => d ? format(new Date(d), 'dd/MM/yyyy', { locale: he }) : '—'
 const fmtCur = (n: number) =>
   new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(n)
+// תצוגת תמונה מוטמעת רק עבור קבצי תמונה — אחרת קישור (למשל PDF)
+const isImage = (url: string) => /\.(png|jpe?g|gif|webp|bmp|svg)(\?|$)/i.test(url)
 
 export default async function MaternityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -70,7 +73,10 @@ export default async function MaternityDetailPage({ params }: { params: Promise<
             {motherId && <p className="text-sm text-slate-500 ltr-num">ת.ז. {motherId}</p>}
           </div>
         </div>
-        <StatusControl aid={aid} />
+        <div className="flex items-center gap-2">
+          <StatusControl aid={aid} />
+          <MaternityActions aid={aid} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -125,6 +131,27 @@ export default async function MaternityDetailPage({ params }: { params: Promise<
           <div className="text-sm">
             <span className="text-slate-500">שם: </span>{aid.recovery_home}
           </div>
+        </Card>
+      )}
+
+      {aid.birth_certificate_url && (
+        <Card>
+          <div className="flex items-center gap-2 text-indigo-600 mb-3">
+            <FileText size={16} />
+            <span className="text-xs font-semibold text-slate-500 uppercase">אישור לידה</span>
+          </div>
+          {isImage(aid.birth_certificate_url) ? (
+            <a href={aid.birth_certificate_url} target="_blank" rel="noopener noreferrer" className="block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={aid.birth_certificate_url} alt="אישור לידה"
+                className="max-h-64 rounded-lg border border-slate-200 hover:opacity-90 transition-opacity" />
+            </a>
+          ) : (
+            <a href={aid.birth_certificate_url} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 px-3 py-2 rounded-lg border border-indigo-200 hover:bg-indigo-50 transition-colors">
+              <FileText size={15} /> צפייה באישור הלידה
+            </a>
+          )}
         </Card>
       )}
 
