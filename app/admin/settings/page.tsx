@@ -4,6 +4,7 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
 import { Profile, ROLE_LABELS } from '@/types'
 import LineageTreeManager from '@/components/admin/LineageTreeManager'
 import AddUserButton from './AddUserButton'
+import EditUserButton from './EditUserButton'
 
 async function getProfiles(): Promise<Profile[]> {
   if (!isSupabaseConfigured()) return []
@@ -77,6 +78,7 @@ export default async function SettingsPage() {
                       {ROLE_LABELS[p.role]}
                     </span>
                     <div className={`w-2 h-2 rounded-full ${p.is_active ? 'bg-green-500' : 'bg-slate-300'}`} />
+                    <EditUserButton profile={p} />
                   </div>
                 </div>
               ))}

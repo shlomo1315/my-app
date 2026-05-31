@@ -1,9 +1,33 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Building2, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import Button from '@/components/ui/Button'
+
+function WelcomeScreen({ name }: { name: string }) {
+  const [visible, setVisible] = useState(true)
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(false), 2800)
+    return () => clearTimeout(t)
+  }, [])
+
+  return (
+    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 transition-opacity duration-500 ${visible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+      <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-white/10" />
+      <div className="absolute -bottom-20 -left-20 w-96 h-96 rounded-full bg-white/5" />
+      <div className="relative text-center text-white px-8">
+        <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-6 backdrop-blur-sm">
+          <Building2 size={36} className="text-white" />
+        </div>
+        <h1 className="text-3xl font-bold mb-2">שלום, {name} 👋</h1>
+        <p className="text-indigo-100 text-lg mb-1">ברוכים הבאים לתוכנת הניהול</p>
+        <p className="text-white font-semibold text-xl">היכל החתם סופר</p>
+        <p className="text-indigo-200 text-sm mt-6">מיד תועבר לניהול האתר...</p>
+      </div>
+    </div>
+  )
+}
 
 export default function LoginPage() {
   const router = useRouter()
@@ -15,6 +39,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [logoError, setLogoError] = useState(false)
+  const [welcomeName, setWelcomeName] = useState<string | null>(null)
 
   const isPlaceholder =
     process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://placeholder.supabase.co'
@@ -22,23 +47,39 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (isPlaceholder) {
-      router.push('/admin/dashboard')
+      setWelcomeName('אורח')
+      setTimeout(() => { router.push('/admin/dashboard') }, 3000)
       return
     }
     setLoading(true)
     setError('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       setError('אימייל או סיסמה שגויים. אנא נסה שוב.')
-    } else {
-      router.push('/admin/dashboard')
-      router.refresh()
+      setLoading(false)
+      return
+    }
+    // שלוף את שם המשתמש מהפרופיל
+    let name = email.split('@')[0]
+    if (data.user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', data.user.id)
+        .maybeSingle()
+      if (profile?.full_name) name = profile.full_name
     }
     setLoading(false)
+    setWelcomeName(name)
+    setTimeout(() => {
+      router.push('/admin/dashboard')
+      router.refresh()
+    }, 3000)
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-100 via-cyan-50 to-blue-100 p-4">
+      {welcomeName && <WelcomeScreen name={welcomeName} />}
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center gap-4 mb-8">
           <div className="w-28 h-28 bg-white rounded-2xl flex items-center justify-center shadow-lg border border-sky-200 overflow-hidden p-2">

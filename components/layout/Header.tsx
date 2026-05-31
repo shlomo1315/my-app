@@ -35,7 +35,8 @@ export default function Header({ user, title }: HeaderProps) {
           <div className="flex items-center gap-2 pr-2 border-r border-slate-200">
             <div className="text-right leading-tight">
               <p className="text-sm font-medium text-slate-800">{user.full_name}</p>
-              <p className="text-xs text-slate-500">{ROLE_LABELS[user.role]}</p>
+              <p className="text-xs text-slate-400 ltr-num">{user.email}</p>
+              <p className="text-xs text-indigo-500 font-medium">{ROLE_LABELS[user.role]}</p>
             </div>
             <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 flex-shrink-0">
               <User size={15} />

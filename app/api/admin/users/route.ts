@@ -79,3 +79,34 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ ok: true })
 }
+
+export async function PATCH(request: NextRequest) {
+  const isAdmin = await verifyAdmin()
+  if (!isAdmin) {
+    return NextResponse.json({ error: 'אין הרשאה' }, { status: 403 })
+  }
+
+  const admin = getAdminClient()
+  if (!admin) {
+    return NextResponse.json({ error: 'מפתח השירות אינו מוגדר' }, { status: 500 })
+  }
+
+  let body: { id?: string; full_name?: string; role?: string; is_active?: boolean; phone?: string }
+  try { body = await request.json() } catch { return NextResponse.json({ error: 'בקשה לא תקינה' }, { status: 400 }) }
+
+  const { id, full_name, role, is_active, phone } = body
+
+  if (!id) return NextResponse.json({ error: 'חסר מזהה משתמש' }, { status: 400 })
+  if (role && !VALID_ROLES.includes(role)) return NextResponse.json({ error: 'תפקיד לא תקין' }, { status: 400 })
+
+  const updates: Record<string, unknown> = {}
+  if (full_name !== undefined) updates.full_name = String(full_name).trim()
+  if (role !== undefined) updates.role = role
+  if (is_active !== undefined) updates.is_active = is_active
+  if (phone !== undefined) updates.phone = phone ? String(phone).trim() : null
+
+  const { error } = await admin.from('profiles').update(updates).eq('id', id)
+  if (error) return NextResponse.json({ error: `שגיאה בעדכון: ${error.message}` }, { status: 500 })
+
+  return NextResponse.json({ ok: true })
+}
