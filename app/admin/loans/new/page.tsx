@@ -1,13 +1,18 @@
 'use client'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowRight, Search, Loader2, Check, AlertTriangle, X, CreditCard } from 'lucide-react'
+import { ArrowRight, Search, Loader2, Check, AlertTriangle, X, CreditCard, Upload, FileText } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Beneficiary } from '@/types'
 
 const MAX_AMOUNT = 30000
 const MAX_INSTALLMENTS = 60
+const MAX_FILES = 5
+const MAX_FILE_MB = 10
+
+// הצהרה — האם פנה בעבר לגמ"ח
+const DECLARATION_OPTIONS = ['לא הגשתי', 'הגשתי וקיבלתי', 'הגשתי וסורבתי']
 
 // מטרות ההלוואה — כולל הסבר היכן שנדרש
 const LOAN_PURPOSES: { value: string; desc?: string }[] = [
@@ -42,10 +47,13 @@ export default function NewLoanPage() {
   const [beneficiary, setBeneficiary] = useState<Beneficiary | null>(null)
 
   // Step 2 — loan details
+  const fileRef = useRef<HTMLInputElement>(null)
   const [purpose, setPurpose] = useState('')
   const [purposeDetails, setPurposeDetails] = useState('')
   const [amount, setAmount] = useState('')
-  const [installments, setInstallments] = useState('12')
+  const [installments, setInstallments] = useState('')
+  const [declaration, setDeclaration] = useState('')
+  const [files, setFiles] = useState<File[]>([])
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
@@ -53,7 +61,22 @@ export default function NewLoanPage() {
 
   const amountNum = parseInt(amount.replace(/\D/g, '') || '0', 10)
   const instNum = parseInt(installments.replace(/\D/g, '') || '0', 10)
-  const monthly = instNum > 0 ? Math.ceil(amountNum / instNum) : 0
+  // פירוט מטרה לא נדרש עבור "נישואי הבן/הבת" — אישור הרב/הזמנה מספיקים
+  const needsDetails = purpose !== 'נישואי הבן/הבת'
+
+  const addFiles = (list: FileList | null) => {
+    if (!list) return
+    const incoming = Array.from(list)
+    const tooBig = incoming.find(f => f.size > MAX_FILE_MB * 1024 * 1024)
+    if (tooBig) { setFieldErrors(p => ({ ...p, files: `הקובץ "${tooBig.name}" גדול מ-${MAX_FILE_MB}MB` })); return }
+    setFiles(prev => {
+      const merged = [...prev, ...incoming].slice(0, MAX_FILES)
+      return merged
+    })
+    clearErr('files')
+    if (fileRef.current) fileRef.current.value = ''
+  }
+  const removeFile = (i: number) => setFiles(prev => prev.filter((_, idx) => idx !== i))
 
   const lookupBeneficiary = async () => {
     const raw = idInput.trim()
@@ -97,6 +120,8 @@ export default function NewLoanPage() {
     else if (amountNum > MAX_AMOUNT) e.amount = `הסכום המרבי הוא ${fmtCur(MAX_AMOUNT)}`
     if (!instNum) e.installments = 'יש להזין מספר תשלומים'
     else if (instNum > MAX_INSTALLMENTS) e.installments = `מספר התשלומים המרבי הוא ${MAX_INSTALLMENTS}`
+    if (files.length === 0) e.files = 'יש לצרף לפחות מסמך אחד (אישור רב)'
+    if (!declaration) e.declaration = 'יש לבחור תשובה'
     return e
   }
 
@@ -107,15 +132,28 @@ export default function NewLoanPage() {
     if (Object.keys(errs).length > 0) { setSaveError('יש למלא את כל השדות המסומנים'); return }
     setSaving(true); setSaveError('')
     try {
+      // העלאת המסמכים המצורפים לאחסון
+      const docs: { url: string; name: string }[] = []
+      for (const f of files) {
+        const path = `loans/${beneficiary.id}/${Date.now()}_${f.name}`
+        const { error: upErr } = await supabase.storage.from('documents').upload(path, f)
+        if (!upErr) {
+          const { data: pub } = supabase.storage.from('documents').getPublicUrl(path)
+          docs.push({ url: pub.publicUrl, name: f.name })
+        }
+      }
+
       const { data: inserted, error } = await supabase
         .from('loans')
         .insert({
           beneficiary_id: beneficiary.id,
           amount: amountNum,
           installments: instNum,
-          monthly_payment: monthly,
+          monthly_payment: 0,
           purpose: purpose || null,
-          purpose_details: purposeDetails.trim() || null,
+          purpose_details: needsDetails ? (purposeDetails.trim() || null) : null,
+          declaration: declaration || null,
+          document_urls: docs.length ? docs : null,
           notes: notes.trim() || null,
           status: 'pending',
         })
@@ -220,19 +258,21 @@ export default function NewLoanPage() {
             </div>
             {fieldErrors.purpose && <p className="text-xs text-red-600">{fieldErrors.purpose}</p>}
 
-            <div className="flex flex-col gap-2 mt-1">
-              <label className="text-xs font-medium text-slate-600">
-                פירוט מטרת ההלוואה {purpose === 'אחר' && <span className="text-red-500">*</span>}
-              </label>
-              <textarea
-                value={purposeDetails}
-                onChange={e => { setPurposeDetails(e.target.value); clearErr('purposeDetails') }}
-                rows={2}
-                placeholder="פרט/י את מטרת ההלוואה"
-                className={`rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 resize-none ${fieldErrors.purposeDetails ? 'border-red-400 focus:ring-red-400' : 'border-slate-300 focus:ring-indigo-500'}`}
-              />
-              {fieldErrors.purposeDetails && <p className="text-xs text-red-600">{fieldErrors.purposeDetails}</p>}
-            </div>
+            {needsDetails && (
+              <div className="flex flex-col gap-2 mt-1">
+                <label className="text-xs font-medium text-slate-600">
+                  פירוט מטרת ההלוואה {purpose === 'אחר' && <span className="text-red-500">*</span>}
+                </label>
+                <textarea
+                  value={purposeDetails}
+                  onChange={e => { setPurposeDetails(e.target.value); clearErr('purposeDetails') }}
+                  rows={2}
+                  placeholder="פרט/י את מטרת ההלוואה"
+                  className={`rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 resize-none ${fieldErrors.purposeDetails ? 'border-red-400 focus:ring-red-400' : 'border-slate-300 focus:ring-indigo-500'}`}
+                />
+                {fieldErrors.purposeDetails && <p className="text-xs text-red-600">{fieldErrors.purposeDetails}</p>}
+              </div>
+            )}
           </div>
 
           {/* Amount + installments */}
@@ -243,30 +283,77 @@ export default function NewLoanPage() {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-slate-600">סכום ההלוואה המבוקש (₪) <span className="text-red-500">*</span> <span className="font-normal text-slate-400">(עד {MAX_AMOUNT.toLocaleString('he-IL')})</span></label>
+                <label className="text-xs font-medium text-slate-600">סכום ההלוואה המבוקש (₪) <span className="text-red-500">*</span></label>
                 <input type="text" inputMode="numeric" value={amount}
                   onChange={e => { setAmount(e.target.value.replace(/\D/g, '').slice(0, 6)); clearErr('amount') }}
                   placeholder="0"
                   className={`rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ltr-num text-left ${fieldErrors.amount ? 'border-red-400 focus:ring-red-400' : 'border-slate-300 focus:ring-indigo-500'}`}
                   dir="ltr" />
+                <p className="text-[11px] text-slate-400">עד {MAX_AMOUNT.toLocaleString('he-IL')} ש״ח (שימו לב, ההלוואה מתבצעת במטבע הדולר)</p>
                 {fieldErrors.amount && <p className="text-xs text-red-600">{fieldErrors.amount}</p>}
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-slate-600">מספר תשלומים להחזר <span className="text-red-500">*</span> <span className="font-normal text-slate-400">(עד {MAX_INSTALLMENTS})</span></label>
+                <label className="text-xs font-medium text-slate-600">מספר תשלומים להחזר <span className="text-red-500">*</span></label>
                 <input type="text" inputMode="numeric" value={installments}
                   onChange={e => { setInstallments(e.target.value.replace(/\D/g, '').slice(0, 2)); clearErr('installments') }}
-                  placeholder="12"
+                  placeholder="בחר/י מספר תשלומים"
                   className={`rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ltr-num text-left ${fieldErrors.installments ? 'border-red-400 focus:ring-red-400' : 'border-slate-300 focus:ring-indigo-500'}`}
                   dir="ltr" />
+                <p className="text-[11px] text-slate-400">עד {MAX_INSTALLMENTS} תשלומים</p>
                 {fieldErrors.installments && <p className="text-xs text-red-600">{fieldErrors.installments}</p>}
               </div>
             </div>
-            {amountNum > 0 && instNum > 0 && amountNum <= MAX_AMOUNT && instNum <= MAX_INSTALLMENTS && (
-              <div className="bg-indigo-50 rounded-xl p-4 flex items-center justify-between">
-                <span className="text-sm text-indigo-700">תשלום חודשי משוער:</span>
-                <span className="text-xl font-bold text-indigo-800 ltr-num">{fmtCur(monthly)}</span>
+          </div>
+
+          {/* Documents */}
+          <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-3">
+            <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center">4</span>
+              צירוף מסמכים <span className="text-red-500">*</span>
+            </h2>
+            <p className="text-xs text-slate-500">יש לצרף: <strong>אישור רב</strong> (חובה), וכן מומלץ הזמנה / מסמכים רפואיים / כל מסמך אחר. עד {MAX_FILES} קבצים — PDF, מסמך או תמונה. גודל מרבי לקובץ: {MAX_FILE_MB}MB.</p>
+            <input type="file" ref={fileRef} className="hidden" multiple accept="image/*,.pdf,.doc,.docx"
+              onChange={e => addFiles(e.target.files)} />
+            {files.length > 0 && (
+              <div className="flex flex-col gap-2">
+                {files.map((f, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-700">
+                    <FileText size={14} className="text-indigo-500 flex-shrink-0" />
+                    <span className="truncate flex-1">{f.name}</span>
+                    <button type="button" onClick={() => removeFile(i)} className="text-slate-400 hover:text-red-500 flex-shrink-0"><X size={14} /></button>
+                  </div>
+                ))}
               </div>
             )}
+            {files.length < MAX_FILES && (
+              <button type="button" onClick={() => fileRef.current?.click()}
+                className={`flex items-center justify-center gap-2 border-2 border-dashed rounded-lg px-4 py-3 text-sm transition-colors ${fieldErrors.files ? 'border-red-400 text-red-500 hover:bg-red-50' : 'border-slate-300 text-slate-500 hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600'}`}>
+                <Upload size={16} /> הוספת קובץ
+              </button>
+            )}
+            {fieldErrors.files && <p className="text-xs text-red-600">{fieldErrors.files}</p>}
+          </div>
+
+          {/* Declaration */}
+          <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-2">
+            <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center">5</span>
+              הצהרה <span className="text-red-500">*</span>
+            </h2>
+            <label className="text-xs font-medium text-slate-600">האם פנית בעבר לגמ״ח חתם סופר לבקשת הלוואה?</label>
+            <div className="flex flex-col gap-2 mt-1">
+              {DECLARATION_OPTIONS.map(opt => (
+                <button key={opt} type="button"
+                  onClick={() => { setDeclaration(opt); clearErr('declaration') }}
+                  className={`text-right rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors flex items-center gap-2 ${
+                    declaration === opt ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-200 text-slate-800' : 'border-slate-200 text-slate-600 hover:border-indigo-300 hover:bg-slate-50'
+                  }`}>
+                  <span className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${declaration === opt ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300'}`} />
+                  {opt}
+                </button>
+              ))}
+            </div>
+            {fieldErrors.declaration && <p className="text-xs text-red-600">{fieldErrors.declaration}</p>}
           </div>
 
           {/* Notes */}

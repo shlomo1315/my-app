@@ -128,6 +128,8 @@ export interface Loan {
   monthly_payment: number
   purpose?: string
   purpose_details?: string
+  declaration?: string
+  document_urls?: { url: string; name: string }[]
   status: LoanStatus
   approved_by?: string
   start_date?: string

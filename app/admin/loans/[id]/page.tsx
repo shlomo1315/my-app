@@ -1,10 +1,10 @@
 import Link from 'next/link'
-import { ArrowRight, CreditCard, CheckCircle, AlertCircle } from 'lucide-react'
+import { ArrowRight, CreditCard, CheckCircle, AlertCircle, FileText, Edit } from 'lucide-react'
 import { notFound } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
-import { Loan, LoanPayment, LOAN_STATUS_LABELS } from '@/types'
+import { Loan, LoanPayment } from '@/types'
 import Card from '@/components/ui/Card'
-import StatusBadge from '@/components/ui/StatusBadge'
+import { LoanStatusControl, DeleteLoanButton } from '../LoanControls'
 import { format } from 'date-fns'
 import { he } from 'date-fns/locale'
 
@@ -59,7 +59,15 @@ export default async function LoanDetailPage({ params }: { params: Promise<{ id:
             <p className="text-sm text-slate-500 ltr-num">{b?.id_number}</p>
           </div>
         </div>
-        <StatusBadge status={loan.status} />
+        <div className="flex items-center gap-2">
+          <LoanStatusControl loan={loan} />
+          <Link href={`/admin/loans/${loan.id}/edit`}>
+            <button className="flex items-center gap-1.5 text-sm text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg px-3 py-1.5 transition-colors">
+              <Edit size={14} /> עריכה
+            </button>
+          </Link>
+          <DeleteLoanButton loanId={loan.id} redirect />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -70,10 +78,10 @@ export default async function LoanDetailPage({ params }: { params: Promise<{ id:
           </div>
           <div className="space-y-2 text-sm">
             <p><span className="text-slate-500">סכום: </span><span className="font-bold ltr-num">{fmtCur(loan.amount)}</span></p>
-            <p><span className="text-slate-500">תשלום חודשי: </span><span className="ltr-num">{fmtCur(loan.monthly_payment)}</span></p>
             <p><span className="text-slate-500">מספר תשלומים: </span>{loan.installments}</p>
             <p><span className="text-slate-500">מטרה: </span>{loan.purpose ?? '—'}</p>
             {loan.purpose_details && <p><span className="text-slate-500">פירוט מטרה: </span>{loan.purpose_details}</p>}
+            {loan.declaration && <p><span className="text-slate-500">פנייה קודמת לגמ״ח: </span>{loan.declaration}</p>}
             <p><span className="text-slate-500">תאריך פתיחה: </span><span className="ltr-num">{fmtDate(loan.created_at)}</span></p>
           </div>
         </Card>
@@ -129,6 +137,24 @@ export default async function LoanDetailPage({ params }: { params: Promise<{ id:
           </div>
         )}
       </Card>
+
+      {Array.isArray(loan.document_urls) && loan.document_urls.length > 0 && (
+        <Card>
+          <div className="flex items-center gap-2 text-indigo-600 mb-3">
+            <FileText size={16} />
+            <span className="text-xs font-semibold text-slate-500 uppercase">מסמכים מצורפים</span>
+          </div>
+          <div className="flex flex-col gap-2">
+            {loan.document_urls.map((d, i) => (
+              <a key={i} href={d.url} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700 bg-slate-50 hover:bg-indigo-50 border border-slate-200 rounded-lg px-3 py-2 transition-colors">
+                <FileText size={14} className="flex-shrink-0" />
+                <span className="truncate">{d.name || `מסמך ${i + 1}`}</span>
+              </a>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {loan.notes && (
         <Card>
