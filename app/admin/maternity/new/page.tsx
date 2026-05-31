@@ -89,13 +89,29 @@ export default function NewMaternityPage() {
     if (!babyBirthDate) e.babyBirthDate = 'תאריך לידת תינוק חובה'
     if (!recoveryHome) e.recoveryHome = 'יש לבחור בית החלמה'
     if (!certFile) e.certFile = 'יש לצרף אישור לידה'
+    const cardDigits = cardNumber.replace(/\D/g, '')
     if (!cardNumber.trim()) e.cardNumber = 'מספר כרטיס נדרים חובה'
+    else if (cardDigits.length !== 16) e.cardNumber = 'מספר כרטיס נדרים חייב להכיל 16 ספרות'
     return e
   }
 
   const handleSubmit = async () => {
     if (!mother) return
     const errs = validate()
+
+    // בדיקת כפילות — האם תינוק עם ת.ז. זו כבר קיים ברשימת הילדים של המשפחה
+    if (!errs.babyIdNumber && babyIdNumber.trim()) {
+      const normalizedBabyId = babyIdType === 'id' ? babyIdNumber.replace(/\D/g, '') : babyIdNumber.trim()
+      const existingChildren = Array.isArray((mother as { children?: unknown }).children)
+        ? ((mother as { children: Record<string, unknown>[] }).children)
+        : []
+      const dup = existingChildren.some(c => {
+        const cid = String(c.id_number ?? '').replace(/\D/g, '') || String(c.id_number ?? '')
+        return cid && (cid === normalizedBabyId || c.id_number === babyIdNumber.trim())
+      })
+      if (dup) errs.babyIdNumber = 'ילד עם תעודת זהות זו כבר רשום במשפחה זו — לא ניתן להוסיף שוב'
+    }
+
     setFieldErrors(errs)
     if (Object.keys(errs).length > 0) { setSaveError('יש למלא את כל השדות המסומנים'); return }
     setSaving(true); setSaveError('')
@@ -345,14 +361,16 @@ export default function NewMaternityPage() {
               כרטיס נדרים
             </h2>
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-medium text-slate-600">מספר כרטיס נדרים <span className="text-red-500">*</span></label>
+              <label className="text-xs font-medium text-slate-600">מספר כרטיס נדרים <span className="text-red-500">*</span> <span className="font-normal text-slate-400">(16 ספרות)</span></label>
               <input
-                type="text" value={cardNumber}
-                onChange={e => { setCardNumber(e.target.value); clearErr('cardNumber') }}
-                placeholder="0000-0000-0000-0000"
-                className={`rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ltr-num text-left ${fieldErrors.cardNumber ? 'border-red-400 focus:ring-red-400' : 'border-slate-300 focus:ring-indigo-500'}`}
+                type="text" inputMode="numeric" value={cardNumber}
+                onChange={e => { setCardNumber(e.target.value.replace(/\D/g, '').slice(0, 16)); clearErr('cardNumber') }}
+                placeholder="0000000000000000"
+                maxLength={16}
+                className={`rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ltr-num text-left tracking-widest ${fieldErrors.cardNumber ? 'border-red-400 focus:ring-red-400' : 'border-slate-300 focus:ring-indigo-500'}`}
                 dir="ltr"
               />
+              <p className="text-[11px] text-slate-400 text-left ltr-num">{cardNumber.replace(/\D/g, '').length}/16</p>
               {fieldErrors.cardNumber && <p className="text-xs text-red-600">{fieldErrors.cardNumber}</p>}
             </div>
           </div>
