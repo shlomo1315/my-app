@@ -68,6 +68,20 @@ export function StatusControl({ aid }: { aid: MaternityAid }) {
       // סנכרון סטטוס התינוק בכרטסת המשפחה לפי סטטוס תיק היולדת
       // active → הלידה מאושרת · pending → חוזר לממתין · cancelled → מוסר מהכרטסת
       await syncBabyStatusInFamily(supabase, aid, next)
+
+      // באישור הלידה — סנכרון המשפחה לנדרים פלוס (כרטיס נדרים). נכשל בשקט אם לא מוגדר.
+      if (next === 'active') {
+        const mother = aid.beneficiary as MotherRef | undefined
+        if (mother?.id) {
+          try {
+            await fetch('/api/nedarim/save-client', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ beneficiaryId: mother.id }),
+            })
+          } catch { /* לא חוסם את האישור */ }
+        }
+      }
       setOpen(false)
       router.refresh()
     } catch (err: unknown) {
