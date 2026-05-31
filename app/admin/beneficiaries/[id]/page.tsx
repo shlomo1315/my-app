@@ -3,11 +3,12 @@ import Link from 'next/link'
 import { ArrowRight, Phone, MapPin, Calendar, Users, GitBranch, ChevronLeft } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
 import { Beneficiary } from '@/types'
-import StatusBadge from '@/components/ui/StatusBadge'
 import Card from '@/components/ui/Card'
 import { format } from 'date-fns'
 import { he } from 'date-fns/locale'
 import BeneficiaryActions from './BeneficiaryActions'
+import StatusControl from './StatusControl'
+import DocumentsManager from './DocumentsManager'
 
 async function getBeneficiary(id: string): Promise<Beneficiary | null> {
   if (!isSupabaseConfigured()) return null
@@ -87,7 +88,7 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <StatusBadge status={beneficiary.eligibility_status} />
+          <StatusControl id={id} status={beneficiary.eligibility_status} />
           <BeneficiaryActions id={id} name={[beneficiary.family_name, beneficiary.full_name].filter(Boolean).join(' ')} />
         </div>
       </div>
@@ -164,23 +165,39 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
       )}
 
       {Array.isArray(beneficiary.children) && (beneficiary.children as unknown[]).length > 0 && (
-        <Card>
-          <div className="flex items-center gap-2 mb-3">
+        <Card padding="none">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100">
             <Users size={16} className="text-indigo-500" />
             <h2 className="text-xs font-semibold text-slate-500 uppercase">ילדים ({(beneficiary.children as unknown[]).length})</h2>
           </div>
-          <div className="flex flex-col gap-2">
-            {(beneficiary.children as { name: string; id_number?: string; doc_type?: string; gender?: string; birth_date?: string }[]).map((c, i) => (
-              <div key={i} className="flex items-center justify-between text-sm py-1.5 border-b border-slate-100 last:border-0">
-                <span className="font-medium text-slate-800">{c.name}</span>
-                <div className="flex items-center gap-3 text-xs text-slate-500">
-                  {c.gender && <span>{c.gender === 'male' ? 'זכר' : 'נקבה'}</span>}
-                  {c.birth_date && <span>{formatDate(c.birth_date)}</span>}
-                  {c.id_number && <span className="ltr-num font-mono">{c.id_number}</span>}
-                </div>
-              </div>
-            ))}
-          </div>
+          <table className="w-full text-sm text-right">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-100 text-xs text-slate-500">
+                <th className="px-4 py-2">#</th>
+                <th className="px-4 py-2">שם</th>
+                <th className="px-4 py-2">מין</th>
+                <th className="px-4 py-2">תאריך לידה</th>
+                <th className="px-4 py-2">מספר זהות</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {(beneficiary.children as { name: string; id_number?: string; doc_type?: string; gender?: string; birth_date?: string }[]).map((c, i) => (
+                <tr key={i} className="hover:bg-slate-50">
+                  <td className="px-4 py-2.5 text-slate-400 tabular-nums">{i + 1}</td>
+                  <td className="px-4 py-2.5 font-medium text-slate-800">{c.name}</td>
+                  <td className="px-4 py-2.5">
+                    {c.gender ? (
+                      <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${c.gender === 'male' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}`}>
+                        {c.gender === 'male' ? 'זכר' : 'נקבה'}
+                      </span>
+                    ) : <span className="text-slate-300">—</span>}
+                  </td>
+                  <td className="px-4 py-2.5 text-slate-600">{c.birth_date ? formatDate(c.birth_date) : <span className="text-slate-300">—</span>}</td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-slate-600 ltr-num">{c.id_number || <span className="text-slate-300">—</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </Card>
       )}
 
@@ -190,6 +207,8 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
           <p className="text-sm text-slate-700 whitespace-pre-wrap">{beneficiary.notes}</p>
         </Card>
       )}
+
+      <DocumentsManager beneficiaryId={id} />
 
       <div className="grid grid-cols-3 gap-3 text-center text-xs text-slate-400">
         <div className="bg-white rounded-xl border border-slate-200 p-3">
