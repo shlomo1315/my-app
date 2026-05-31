@@ -8,7 +8,7 @@ const geist = Geist({
 })
 
 export const metadata: Metadata = {
-  title: 'מערכת ניהול עמותה',
+  title: 'היכל החתם סופר - מערכת ניהול',
   description: 'מערכת מרכזית לניהול פעילות העמותה',
 }
 

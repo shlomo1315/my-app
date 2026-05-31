@@ -6,10 +6,12 @@ import Button from '@/components/ui/Button'
 import { GitBranch, ChevronLeft, Loader2, Heart, User, Phone, MapPin, Users, FileText } from 'lucide-react'
 
 const MARITAL_OPTIONS = [
-  'נשוי', 'גרוש', 'גרושה', 'אלמן', 'אלמנה',
+  'נישואים', 'גרוש', 'גרושה', 'אלמן', 'אלמנה',
 ]
-// Only a currently-married person needs spouse (wife) details
-const SPOUSE_STATUSES = ['נשוי']
+// Statuses where the primary person is the WOMAN (גרושה / אלמנה)
+const WIFE_PRIMARY_STATUSES = ['גרושה', 'אלמנה']
+// Only a currently-married couple shows BOTH husband and wife details
+const MARRIED_STATUS = 'נישואים'
 
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'ממתין לאישור' },
@@ -248,7 +250,12 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
   const setChild = (idx: number, key: keyof ChildEntry, value: string) =>
     setChildren(prev => prev.map((c, i) => (i === idx ? { ...c, [key]: value } : c)))
 
-  const showSpouseFields = SPOUSE_STATUSES.includes(form.marital_status)
+  // Who is the primary person? (woman for גרושה/אלמנה, otherwise man)
+  const primaryIsWife = WIFE_PRIMARY_STATUSES.includes(form.marital_status)
+  const primaryGender = primaryIsWife ? 'female' : 'male'
+  const primaryNameLabel = primaryIsWife ? 'שם האישה' : 'שם הבעל'
+  // Show the wife block (in addition to the husband) only when married
+  const showWifeFields = form.marital_status === MARRIED_STATUS
 
   const validate = (): boolean => {
     const errs: Partial<Record<keyof FormState, string>> = {}
@@ -256,15 +263,14 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
     // מצב משפחתי
     if (!form.marital_status) errs.marital_status = 'יש לבחור מצב משפחתי'
 
-    // פרטים אישיים
+    // פרטים אישיים (של האדם הראשי — בעל או אישה)
     if (!form.id_number.trim()) errs.id_number = 'שדה חובה'
     else if (!/^\d{5,9}$/.test(form.id_number.replace(/\D/g, ''))) errs.id_number = 'ת.ז. לא תקינה'
     if (!form.full_name.trim()) errs.full_name = 'שדה חובה'
-    if (!form.gender) errs.gender = 'שדה חובה'
     if (!form.birth_date) errs.birth_date = 'שדה חובה'
 
-    // בן/בת הזוג
-    if (showSpouseFields) {
+    // האישה (רק בנישואים)
+    if (showWifeFields) {
       if (!form.spouse_name.trim()) errs.spouse_name = 'שדה חובה'
       if (!form.spouse_id_number.trim()) errs.spouse_id_number = 'שדה חובה'
       else if (!/^\d{5,9}$/.test(form.spouse_id_number.replace(/\D/g, ''))) errs.spouse_id_number = 'ת.ז. לא תקינה'
@@ -312,10 +318,10 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
         address: form.address || null,
         city: form.city || null,
         birth_date: form.birth_date || null,
-        gender: form.gender || null,
+        gender: primaryGender,
         marital_status: form.marital_status || null,
-        spouse_name: showSpouseFields ? (form.spouse_name || null) : null,
-        spouse_id_number: showSpouseFields ? (form.spouse_id_number.replace(/\D/g, '') || null) : null,
+        spouse_name: showWifeFields ? (form.spouse_name || null) : null,
+        spouse_id_number: showWifeFields ? (form.spouse_id_number.replace(/\D/g, '') || null) : null,
         children_count: children.length,
         children: children.map(c => ({
           name: c.name.trim(),
@@ -392,7 +398,7 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
         </div>
         {errors.marital_status && <p className="text-xs text-red-500 mt-1">{errors.marital_status}</p>}
 
-        {showSpouseFields && (
+        {showWifeFields && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-100">
             <p className="col-span-2 text-xs font-medium text-slate-500">פרטי האישה</p>
             <Field label="שם האישה" required error={errors.spouse_name}>
@@ -413,11 +419,11 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
         )}
       </Section>
 
-      {/* ── Personal ── */}
+      {/* ── Personal (primary person: husband or wife) ── */}
       <Section title="פרטים אישיים" icon={User}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label="שם הבעל" required error={errors.full_name}>
-            <FInput value={form.full_name} onChange={set('full_name')} placeholder="ישראל ישראלי" required />
+          <Field label={primaryNameLabel} required error={errors.full_name}>
+            <FInput value={form.full_name} onChange={set('full_name')} placeholder="שם מלא" required />
           </Field>
           <Field label='תעודת זהות' required error={errors.id_number}>
             <FInput
@@ -429,18 +435,6 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
               maxLength={9}
               required
             />
-          </Field>
-          <Field label="מגדר" required error={errors.gender}>
-            <select
-              value={form.gender}
-              onChange={set('gender')}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
-              required
-            >
-              <option value="">בחר...</option>
-              <option value="male">זכר</option>
-              <option value="female">נקבה</option>
-            </select>
           </Field>
           <Field label="תאריך לידה" required error={errors.birth_date}>
             <FInput type="date" value={form.birth_date} onChange={set('birth_date')} dir="ltr" required />
