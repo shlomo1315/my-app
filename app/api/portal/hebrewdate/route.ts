@@ -23,7 +23,9 @@ export async function GET() {
     // Hebrew year only
     const hebrewYear = gematriya(today.getFullYear())
 
-    return NextResponse.json({ hebrewDate, parasha, hebrewYear })
+    // Strip nikud (Hebrew vowel diacritics U+0591–U+05C7)
+    const strip = (s: string) => s.replace(/[֑-ׇ]/g, '')
+    return NextResponse.json({ hebrewDate: strip(hebrewDate), parasha: strip(parasha), hebrewYear: strip(hebrewYear) })
   } catch {
     return NextResponse.json({ hebrewDate: '', parasha: '', hebrewYear: '' })
   }
