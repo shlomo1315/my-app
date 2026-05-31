@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Clock, Check, X, Baby, Eye, ChevronDown, Loader2, Search, FileText } from 'lucide-react'
+import { Clock, Check, X, Baby, Eye, ChevronDown, Loader2, Search, FileText, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { format } from 'date-fns'
 import { he } from 'date-fns/locale'
@@ -167,6 +167,51 @@ async function syncBabyStatusInFamily(
     .eq('id', mother.id)
 }
 
+// מחיקת תיק יולדת — מסיר גם את התינוק שנכנס דרך התיק מכרטסת המשפחה, ואז מוחק את התיק
+export async function deleteMaternityAid(supabase: ReturnType<typeof createClient>, aid: MaternityAid) {
+  const mother = aid.beneficiary as MotherRef | undefined
+  if (mother?.id) {
+    const existing = Array.isArray(mother.children) ? (mother.children as Record<string, unknown>[]) : []
+    const idx = existing.findIndex(c => isSameBaby(c, aid))
+    // נסיר רק ילד שנכנס דרך תיק היולדת (יש לו maternity_aid_id / birth_status)
+    if (idx !== -1 && (existing[idx].maternity_aid_id || existing[idx].birth_status)) {
+      const updatedChildren = existing.filter((_, i) => i !== idx)
+      await supabase
+        .from('beneficiaries')
+        .update({ children: updatedChildren, children_count: updatedChildren.length })
+        .eq('id', mother.id)
+    }
+  }
+  const { error } = await supabase.from('maternity_aids').delete().eq('id', aid.id)
+  if (error) throw error
+}
+
+// ── Delete button (table row) ─────────────────────────────────────────────────────
+function DeleteAidButton({ aid }: { aid: MaternityAid }) {
+  const router = useRouter()
+  const supabase = createClient()
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    if (!confirm(`למחוק את תיק היולדת של "${aid.baby_name ?? 'התינוק'}" לצמיתות? פעולה זו אינה הפיכה.`)) return
+    setDeleting(true)
+    try {
+      await deleteMaternityAid(supabase, aid)
+      router.refresh()
+    } catch (err: unknown) {
+      alert(`שגיאה במחיקה: ${err instanceof Error ? err.message : String(err)}`)
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <button onClick={handleDelete} disabled={deleting}
+      className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-white hover:bg-red-600 px-2.5 py-1.5 rounded-lg border border-red-200 hover:border-red-600 transition-colors disabled:opacity-50">
+      {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />} מחיקה
+    </button>
+  )
+}
+
 // טקסט חיפוש לכל רשומה — מאחד את כל השדות המוצגים בטבלה לחיפוש חופשי
 const searchHaystack = (a: MaternityAid) => {
   const m = a.beneficiary as MotherRef | undefined
@@ -275,10 +320,13 @@ export default function MaternityTable({ data }: { data: MaternityAid[] }) {
                     </td>
                     <td className="px-4 py-3 align-middle"><StatusControl aid={aid} /></td>
                     <td className="px-4 py-3 align-middle">
-                      <Link href={`/admin/maternity/${aid.id}`}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors">
-                        <Eye size={14} /> צפייה
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <Link href={`/admin/maternity/${aid.id}`}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors">
+                          <Eye size={14} /> צפייה
+                        </Link>
+                        <DeleteAidButton aid={aid} />
+                      </div>
                     </td>
                   </tr>
                 )

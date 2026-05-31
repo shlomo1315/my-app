@@ -5,6 +5,7 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
 import { MaternityAid } from '@/types'
 import Card from '@/components/ui/Card'
 import { StatusControl } from '../MaternityTable'
+import MaternityActions from './MaternityActions'
 import { format } from 'date-fns'
 import { he } from 'date-fns/locale'
 
@@ -72,7 +73,10 @@ export default async function MaternityDetailPage({ params }: { params: Promise<
             {motherId && <p className="text-sm text-slate-500 ltr-num">ת.ז. {motherId}</p>}
           </div>
         </div>
-        <StatusControl aid={aid} />
+        <div className="flex items-center gap-2">
+          <StatusControl aid={aid} />
+          <MaternityActions aid={aid} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
