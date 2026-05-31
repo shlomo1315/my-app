@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import {
   Building2,
   Mail,
@@ -10,13 +10,27 @@ import {
   Loader2,
   Phone,
   MapPin,
-  Calendar,
   Users,
-  ChevronRight,
   Clock,
+  GitBranch,
+  ChevronLeft,
+  Heart,
 } from 'lucide-react'
 
 type Step = 'email' | 'otp' | 'form' | 'success' | 'already-registered'
+
+const MARITAL_OPTIONS = [
+  { value: 'רווק', label: 'רווק' },
+  { value: 'רווקה', label: 'רווקה' },
+  { value: 'נשוי', label: 'נשוי' },
+  { value: 'נשואה', label: 'נשואה' },
+  { value: 'גרוש', label: 'גרוש' },
+  { value: 'גרושה', label: 'גרושה' },
+  { value: 'אלמן', label: 'אלמן' },
+  { value: 'אלמנה', label: 'אלמנה' },
+]
+
+const MARRIED_STATUSES = ['נשוי', 'נשואה', 'אלמן', 'אלמנה']
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'בטיפול',
@@ -31,6 +45,124 @@ const STATUS_COLORS: Record<string, string> = {
   rejected: 'bg-red-100 text-red-800 border border-red-200',
   review: 'bg-blue-100 text-blue-800 border border-blue-200',
 }
+
+// ─── Lineage cascade component ───
+
+interface LineageNode {
+  id: string
+  name: string
+  generation: number
+  parent_id: string | null
+}
+
+function LineageCascade({
+  onSelect,
+}: {
+  onSelect: (nodeId: string, path: string[]) => void
+}) {
+  const [levels, setLevels] = useState<
+    { nodes: LineageNode[]; selected: string | null; selectedName: string }[]
+  >([])
+  const [loadingLevel, setLoadingLevel] = useState<number | null>(null)
+
+  const loadLevel = useCallback(
+    async (parentId: string | null, levelIdx: number) => {
+      setLoadingLevel(levelIdx)
+      try {
+        const url = parentId ? `/api/lineage?parent_id=${parentId}` : '/api/lineage'
+        const res = await fetch(url)
+        const data = await res.json()
+        setLevels((prev) => {
+          const next = prev.slice(0, levelIdx)
+          if ((data.nodes ?? []).length > 0) {
+            next.push({ nodes: data.nodes, selected: null, selectedName: '' })
+          }
+          return next
+        })
+      } catch {
+        /* ignore */
+      }
+      setLoadingLevel(null)
+    },
+    []
+  )
+
+  useEffect(() => {
+    loadLevel(null, 0)
+  }, [loadLevel])
+
+  const handleSelect = async (levelIdx: number, node: LineageNode) => {
+    const currentPath = levels
+      .slice(0, levelIdx)
+      .map((l) => l.selectedName)
+      .concat(node.name)
+
+    setLevels((prev) =>
+      prev
+        .slice(0, levelIdx + 1)
+        .map((l, i) =>
+          i === levelIdx ? { ...l, selected: node.id, selectedName: node.name } : l
+        )
+    )
+
+    // Fetch children
+    setLoadingLevel(levelIdx + 1)
+    try {
+      const res = await fetch(`/api/lineage?parent_id=${node.id}`)
+      const data = await res.json()
+      const children: LineageNode[] = data.nodes ?? []
+      setLevels((prev) => {
+        const next = prev.slice(0, levelIdx + 1)
+        if (children.length > 0) {
+          next.push({ nodes: children, selected: null, selectedName: '' })
+          onSelect('', currentPath) // incomplete
+        } else {
+          onSelect(node.id, currentPath) // final leaf
+        }
+        return next
+      })
+    } catch {
+      onSelect(node.id, currentPath)
+    }
+    setLoadingLevel(null)
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {levels.map((level, idx) => (
+        <div key={idx}>
+          <p className="text-xs font-medium text-slate-500 mb-2">
+            {idx === 0 ? 'בחר מהדור הראשון:' : `בחר המשך הדור ${idx + 1}:`}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {level.nodes.map((node) => (
+              <button
+                key={node.id}
+                type="button"
+                onClick={() => handleSelect(idx, node)}
+                className={`text-sm px-3 py-2 rounded-lg border transition-colors ${
+                  level.selected === node.id
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                    : 'bg-white text-slate-700 border-slate-300 hover:border-indigo-400 hover:bg-indigo-50'
+                }`}
+              >
+                {node.name}
+              </button>
+            ))}
+            {loadingLevel === idx + 1 && (
+              <span className="flex items-center gap-1 text-xs text-slate-400 self-center">
+                <Loader2 size={12} className="animate-spin" />
+                טוען...
+              </span>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── Shared form helpers ───
 
 function Field({
   label,
@@ -67,7 +199,7 @@ function Input({
   )
 }
 
-function Select({
+function SelectInput({
   className = '',
   children,
   ...props
@@ -92,21 +224,20 @@ function ErrorBox({ message }: { message: string }) {
 }
 
 function StepIndicator({ current }: { current: Step }) {
-  const steps: { id: Step; label: string }[] = [
+  const steps = [
     { id: 'email', label: 'אימות' },
     { id: 'otp', label: 'קוד' },
     { id: 'form', label: 'פרטים' },
     { id: 'success', label: 'סיום' },
   ]
-  const activeSteps = ['email', 'otp', 'form', 'success', 'already-registered']
-  const currentIndex = activeSteps.indexOf(current)
+  const order = ['email', 'otp', 'form', 'success', 'already-registered']
+  const currentIndex = order.indexOf(current)
 
   return (
     <div className="flex items-center justify-center gap-2 mb-8">
       {steps.map((step, idx) => {
-        const stepIndex = activeSteps.indexOf(step.id)
-        const isDone = currentIndex > stepIndex
-        const isActive = current === step.id || (current === 'already-registered' && step.id === 'success')
+        const isDone = currentIndex > idx
+        const isActive = current === step.id
         return (
           <div key={step.id} className="flex items-center gap-2">
             <div className="flex flex-col items-center gap-1">
@@ -121,12 +252,20 @@ function StepIndicator({ current }: { current: Step }) {
               >
                 {isDone ? <CheckCircle2 size={16} /> : idx + 1}
               </div>
-              <span className={`text-xs ${isActive || isDone ? 'text-indigo-600 font-medium' : 'text-slate-400'}`}>
+              <span
+                className={`text-xs ${
+                  isActive || isDone ? 'text-indigo-600 font-medium' : 'text-slate-400'
+                }`}
+              >
                 {step.label}
               </span>
             </div>
             {idx < steps.length - 1 && (
-              <div className={`w-10 h-0.5 mb-4 ${isDone ? 'bg-indigo-600' : 'bg-slate-200'}`} />
+              <div
+                className={`w-10 h-0.5 mb-4 ${
+                  isDone ? 'bg-indigo-600' : 'bg-slate-200'
+                }`}
+              />
             )}
           </div>
         )
@@ -134,6 +273,8 @@ function StepIndicator({ current }: { current: Step }) {
     </div>
   )
 }
+
+// ─── Main page ───
 
 export default function PublicRegistrationPage() {
   const [step, setStep] = useState<Step>('email')
@@ -149,6 +290,10 @@ export default function PublicRegistrationPage() {
   } | null>(null)
   const otpRefs = useRef<(HTMLInputElement | null)[]>([])
 
+  // Lineage state
+  const [lineageNodeId, setLineageNodeId] = useState('')
+  const [lineagePath, setLineagePath] = useState<string[]>([])
+
   // Form fields
   const [form, setForm] = useState({
     id_number: '',
@@ -160,12 +305,22 @@ export default function PublicRegistrationPage() {
     birth_date: '',
     gender: '',
     marital_status: '',
+    spouse_name: '',
+    spouse_id_number: '',
     children_count: '0',
     notes: '',
   })
 
-  const setField = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setForm((f) => ({ ...f, [k]: e.target.value }))
+  const setField =
+    (k: keyof typeof form) =>
+    (
+      e: React.ChangeEvent<
+        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      >
+    ) =>
+      setForm((f) => ({ ...f, [k]: e.target.value }))
+
+  const showSpouseFields = MARRIED_STATUSES.includes(form.marital_status)
 
   // Step 1 — send OTP
   const handleSendOtp = async (e: React.FormEvent) => {
@@ -190,7 +345,7 @@ export default function PublicRegistrationPage() {
     setLoading(false)
   }
 
-  // OTP digit input handlers
+  // OTP digit handlers
   const handleOtpChange = (idx: number, val: string) => {
     if (!/^\d?$/.test(val)) return
     const next = [...otpDigits]
@@ -198,13 +353,10 @@ export default function PublicRegistrationPage() {
     setOtpDigits(next)
     if (val && idx < 5) otpRefs.current[idx + 1]?.focus()
   }
-
   const handleOtpKeyDown = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otpDigits[idx] && idx > 0) {
+    if (e.key === 'Backspace' && !otpDigits[idx] && idx > 0)
       otpRefs.current[idx - 1]?.focus()
-    }
   }
-
   const handleOtpPaste = (e: React.ClipboardEvent) => {
     const text = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
     if (text.length === 6) {
@@ -218,10 +370,7 @@ export default function PublicRegistrationPage() {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault()
     const token = otpDigits.join('')
-    if (token.length < 6) {
-      setError('אנא הזן את כל 6 הספרות')
-      return
-    }
+    if (token.length < 6) { setError('אנא הזן את כל 6 הספרות'); return }
     setError('')
     setLoading(true)
     try {
@@ -250,7 +399,7 @@ export default function PublicRegistrationPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.id_number || !form.full_name || !form.phone) {
-      setError('אנא מלא את כל שדות החובה')
+      setError('אנא מלא את שדות החובה: שם מלא, ת.ז. וטלפון')
       return
     }
     setError('')
@@ -259,7 +408,15 @@ export default function PublicRegistrationPage() {
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, email, nonce, children_count: parseInt(form.children_count || '0') }),
+        body: JSON.stringify({
+          ...form,
+          email,
+          nonce,
+          children_count: parseInt(form.children_count || '0'),
+          lineage_node_id: lineageNodeId || null,
+          spouse_name: showSpouseFields ? form.spouse_name : null,
+          spouse_id_number: showSpouseFields ? form.spouse_id_number : null,
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -305,7 +462,6 @@ export default function PublicRegistrationPage() {
                 <p className="text-sm text-slate-500">נשלח קוד אימות לאימייל שלך</p>
               </div>
             </div>
-
             <form onSubmit={handleSendOtp} className="flex flex-col gap-4">
               <Field label="כתובת אימייל" required>
                 <Input
@@ -318,9 +474,7 @@ export default function PublicRegistrationPage() {
                   autoComplete="email"
                 />
               </Field>
-
               {error && <ErrorBox message={error} />}
-
               <button
                 type="submit"
                 disabled={loading}
@@ -343,13 +497,14 @@ export default function PublicRegistrationPage() {
               <div>
                 <h2 className="font-semibold text-slate-900">הזן קוד אימות</h2>
                 <p className="text-sm text-slate-500">
-                  שלחנו קוד בן 6 ספרות אל <span className="font-medium text-slate-700" dir="ltr">{email}</span>
+                  שלחנו קוד בן 6 ספרות אל{' '}
+                  <span className="font-medium text-slate-700" dir="ltr">
+                    {email}
+                  </span>
                 </p>
               </div>
             </div>
-
             <form onSubmit={handleVerifyOtp} className="flex flex-col gap-5">
-              {/* OTP digits — displayed LTR */}
               <div className="flex gap-2 justify-center" dir="ltr">
                 {otpDigits.map((digit, idx) => (
                   <input
@@ -366,14 +521,11 @@ export default function PublicRegistrationPage() {
                   />
                 ))}
               </div>
-
               <div className="flex items-center gap-2 text-xs text-slate-500 bg-amber-50 rounded-lg px-3 py-2 border border-amber-100">
                 <Clock size={13} />
                 <span>הקוד בתוקף ל-10 דקות. בדוק גם בתיקיית ספאם.</span>
               </div>
-
               {error && <ErrorBox message={error} />}
-
               <button
                 type="submit"
                 disabled={loading || otpDigits.some((d) => !d)}
@@ -382,7 +534,6 @@ export default function PublicRegistrationPage() {
                 {loading ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
                 {loading ? 'מאמת...' : 'אמת קוד'}
               </button>
-
               <button
                 type="button"
                 onClick={() => { setStep('email'); setOtpDigits(['', '', '', '', '', '']); setError('') }}
@@ -397,6 +548,8 @@ export default function PublicRegistrationPage() {
         {/* ─── Step 3: Registration Form ─── */}
         {step === 'form' && (
           <form onSubmit={handleRegister} className="flex flex-col gap-4">
+
+            {/* ── Personal details ── */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
@@ -404,10 +557,12 @@ export default function PublicRegistrationPage() {
                 </div>
                 <div>
                   <h2 className="font-semibold text-slate-900">פרטים אישיים</h2>
-                  <p className="text-sm text-slate-500">אימייל אומת: <span dir="ltr">{email}</span></p>
+                  <p className="text-sm text-slate-500">
+                    אימייל אומת:{' '}
+                    <span dir="ltr">{email}</span>
+                  </p>
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <Field label="שם מלא" required>
@@ -419,7 +574,6 @@ export default function PublicRegistrationPage() {
                     />
                   </Field>
                 </div>
-
                 <div className="col-span-2 sm:col-span-1">
                   <Field label='מספר ת"ז' required hint="ספרות בלבד">
                     <Input
@@ -433,7 +587,6 @@ export default function PublicRegistrationPage() {
                     />
                   </Field>
                 </div>
-
                 <div className="col-span-2 sm:col-span-1">
                   <Field label="תאריך לידה">
                     <Input
@@ -444,38 +597,80 @@ export default function PublicRegistrationPage() {
                     />
                   </Field>
                 </div>
-
                 <div className="col-span-2 sm:col-span-1">
                   <Field label="מין">
-                    <Select value={form.gender} onChange={setField('gender')}>
+                    <SelectInput value={form.gender} onChange={setField('gender')}>
                       <option value="">בחר...</option>
                       <option value="male">זכר</option>
                       <option value="female">נקבה</option>
-                    </Select>
-                  </Field>
-                </div>
-
-                <div className="col-span-2 sm:col-span-1">
-                  <Field label="מצב משפחתי">
-                    <Select value={form.marital_status} onChange={setField('marital_status')}>
-                      <option value="">בחר...</option>
-                      <option value="רווק/ה">רווק/ה</option>
-                      <option value="נשוי/ה">נשוי/ה</option>
-                      <option value="גרוש/ה">גרוש/ה</option>
-                      <option value="אלמן/ה">אלמן/ה</option>
-                    </Select>
+                    </SelectInput>
                   </Field>
                 </div>
               </div>
             </div>
 
-            {/* Contact */}
+            {/* ── Marital status ── */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Heart size={18} className="text-indigo-600" />
+                <h3 className="font-semibold text-slate-900">מצב משפחתי</h3>
+              </div>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {MARITAL_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, marital_status: opt.value }))}
+                    className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                      form.marital_status === opt.value
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-white text-slate-700 border-slate-300 hover:border-indigo-400 hover:bg-indigo-50'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Conditional spouse fields */}
+              {showSpouseFields && (
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                  <p className="col-span-2 text-xs text-slate-500 font-medium">
+                    {form.marital_status === 'אלמן' || form.marital_status === 'אלמנה'
+                      ? 'פרטי בן/בת הזוג המנוח/ה'
+                      : 'פרטי בן/בת הזוג'}
+                  </p>
+                  <div className="col-span-2 sm:col-span-1">
+                    <Field label="שם בן/בת הזוג">
+                      <Input
+                        value={form.spouse_name}
+                        onChange={setField('spouse_name')}
+                        placeholder="שם מלא"
+                      />
+                    </Field>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <Field label='ת"ז בן/בת הזוג'>
+                      <Input
+                        value={form.spouse_id_number}
+                        onChange={setField('spouse_id_number')}
+                        placeholder="123456789"
+                        inputMode="numeric"
+                        maxLength={9}
+                        dir="ltr"
+                      />
+                    </Field>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Contact ── */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Phone size={18} className="text-indigo-600" />
                 <h3 className="font-semibold text-slate-900">פרטי קשר</h3>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2 sm:col-span-1">
                   <Field label="טלפון ראשי" required>
@@ -489,7 +684,6 @@ export default function PublicRegistrationPage() {
                     />
                   </Field>
                 </div>
-
                 <div className="col-span-2 sm:col-span-1">
                   <Field label="טלפון נוסף">
                     <Input
@@ -504,13 +698,12 @@ export default function PublicRegistrationPage() {
               </div>
             </div>
 
-            {/* Address */}
+            {/* ── Address ── */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <div className="flex items-center gap-2 mb-4">
                 <MapPin size={18} className="text-indigo-600" />
                 <h3 className="font-semibold text-slate-900">כתובת</h3>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <Field label="רחוב ומספר בית">
@@ -521,7 +714,6 @@ export default function PublicRegistrationPage() {
                     />
                   </Field>
                 </div>
-
                 <div className="col-span-2 sm:col-span-1">
                   <Field label="עיר">
                     <Input
@@ -534,13 +726,60 @@ export default function PublicRegistrationPage() {
               </div>
             </div>
 
-            {/* Family */}
+            {/* ── Lineage ── */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+              <div className="flex items-center gap-2 mb-1">
+                <GitBranch size={18} className="text-indigo-600" />
+                <h3 className="font-semibold text-slate-900">שיוך שושלת</h3>
+              </div>
+              <p className="text-xs text-slate-500 mb-4">
+                בחר את הענף שאתה שייך אליו. לחץ על שם ואז בחר המשך הדור.
+              </p>
+
+              {lineagePath.length > 0 && (
+                <div className="flex items-center gap-1 flex-wrap mb-4 p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                  <span className="text-xs text-indigo-600 font-medium ml-1">נבחר:</span>
+                  {lineagePath.map((name, i) => (
+                    <span key={i} className="flex items-center gap-1">
+                      {i > 0 && <ChevronLeft size={12} className="text-indigo-300" />}
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full ${
+                          i === lineagePath.length - 1
+                            ? 'bg-indigo-600 text-white font-semibold'
+                            : 'bg-indigo-100 text-indigo-700'
+                        }`}
+                      >
+                        {name}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <LineageCascade
+                onSelect={(nodeId, path) => {
+                  setLineageNodeId(nodeId)
+                  setLineagePath(path)
+                }}
+              />
+
+              {lineageNodeId && (
+                <button
+                  type="button"
+                  onClick={() => { setLineageNodeId(''); setLineagePath([]) }}
+                  className="mt-3 text-xs text-slate-400 hover:text-slate-600 underline"
+                >
+                  נקה בחירה
+                </button>
+              )}
+            </div>
+
+            {/* ── Children + Notes ── */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Users size={18} className="text-indigo-600" />
-                <h3 className="font-semibold text-slate-900">פרטי משפחה</h3>
+                <h3 className="font-semibold text-slate-900">ילדים והערות</h3>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2 sm:col-span-1">
                   <Field label="מספר ילדים">
@@ -553,7 +792,6 @@ export default function PublicRegistrationPage() {
                     />
                   </Field>
                 </div>
-
                 <div className="col-span-2">
                   <Field label="הערות / תיאור המצב" hint="כל מידע נוסף שתרצה להוסיף">
                     <textarea
@@ -586,7 +824,7 @@ export default function PublicRegistrationPage() {
           </form>
         )}
 
-        {/* ─── Step 4a: Success ─── */}
+        {/* ─── Success ─── */}
         {step === 'success' && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -599,7 +837,9 @@ export default function PublicRegistrationPage() {
             <div className="bg-slate-50 rounded-xl p-4 text-sm text-slate-600 text-right border border-slate-200">
               <p className="flex items-center gap-2 mb-2">
                 <Mail size={14} className="text-indigo-500 flex-shrink-0" />
-                <span>עדכון ישלח לכתובת <span dir="ltr">{email}</span></span>
+                <span>
+                  עדכון ישלח לכתובת <span dir="ltr">{email}</span>
+                </span>
               </p>
               <p className="flex items-center gap-2">
                 <Clock size={14} className="text-indigo-500 flex-shrink-0" />
@@ -609,7 +849,7 @@ export default function PublicRegistrationPage() {
           </div>
         )}
 
-        {/* ─── Step 4b: Already Registered ─── */}
+        {/* ─── Already registered ─── */}
         {step === 'already-registered' && existingBeneficiary && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
             <div className="text-center mb-6">
@@ -619,7 +859,6 @@ export default function PublicRegistrationPage() {
               <h2 className="text-xl font-bold text-slate-900 mb-1">כבר רשום במערכת</h2>
               <p className="text-slate-500 text-sm">כתובת האימייל שלך קיימת במערכת</p>
             </div>
-
             <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 space-y-3 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">שם:</span>
@@ -627,8 +866,14 @@ export default function PublicRegistrationPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-500">סטטוס בקשה:</span>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${STATUS_COLORS[existingBeneficiary.eligibility_status] || 'bg-slate-100 text-slate-700'}`}>
-                  {STATUS_LABELS[existingBeneficiary.eligibility_status] || existingBeneficiary.eligibility_status}
+                <span
+                  className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                    STATUS_COLORS[existingBeneficiary.eligibility_status] ||
+                    'bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  {STATUS_LABELS[existingBeneficiary.eligibility_status] ||
+                    existingBeneficiary.eligibility_status}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -638,14 +883,12 @@ export default function PublicRegistrationPage() {
                 </span>
               </div>
             </div>
-
             <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
               לשינוי פרטים או לבירורים נוספים, אנא פנה ישירות לצוות העמותה.
             </div>
           </div>
         )}
 
-        {/* Back to top link for mobile */}
         {step !== 'success' && step !== 'already-registered' && (
           <p className="text-center text-xs text-slate-400 mt-6">
             מערכת מאובטחת · כל הפרטים מוצפנים

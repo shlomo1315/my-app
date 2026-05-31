@@ -20,8 +20,6 @@ import { useState } from 'react'
 const navItems = [
   { href: '/admin/dashboard', label: 'לוח בקרה', icon: LayoutDashboard },
   { href: '/admin/beneficiaries', label: 'נתמכים', icon: Users },
-  { href: '/admin/families', label: 'משפחות', icon: Home },
-  { href: '/admin/genealogy', label: 'יוחסין', icon: GitBranch },
   { href: '/admin/maternity', label: 'יולדות', icon: Baby },
   { href: '/admin/loans', label: 'הלוואות', icon: CreditCard },
   { href: '/admin/distributions', label: 'חלוקות', icon: Gift },

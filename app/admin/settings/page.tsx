@@ -1,7 +1,8 @@
-import { Settings, Users, Bell, Database, Shield } from 'lucide-react'
+import { Users, Bell, Database, Shield } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
 import { Profile, ROLE_LABELS } from '@/types'
+import LineageTreeManager from '@/components/admin/LineageTreeManager'
 
 async function getProfiles(): Promise<Profile[]> {
   if (!isSupabaseConfigured()) return []
@@ -106,6 +107,10 @@ export default async function SettingsPage() {
               </div>
             ))}
           </div>
+        </Card>
+
+        <Card>
+          <LineageTreeManager />
         </Card>
 
         <Card>
