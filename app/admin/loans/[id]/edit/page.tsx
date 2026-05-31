@@ -77,7 +77,7 @@ export default function EditLoanPage({ params }: { params: Promise<{ id: string 
   const validate = () => {
     const e: Record<string, string> = {}
     if (!purpose) e.purpose = 'יש לבחור מטרת הלוואה'
-    if (purpose === 'אחר' && !purposeDetails.trim()) e.purposeDetails = 'יש לפרט את מטרת ההלוואה'
+    if (needsDetails && !purposeDetails.trim()) e.purposeDetails = 'יש לפרט את מטרת ההלוואה'
     if (!amountNum) e.amount = 'יש להזין סכום'
     else if (amountNum > MAX_AMOUNT) e.amount = `הסכום המרבי הוא ${MAX_AMOUNT.toLocaleString('he-IL')}`
     if (!instNum) e.installments = 'יש להזין מספר תשלומים'
@@ -147,7 +147,7 @@ export default function EditLoanPage({ params }: { params: Promise<{ id: string 
         {fieldErrors.purpose && <p className="text-xs text-red-600">{fieldErrors.purpose}</p>}
         {needsDetails && (
           <div className="flex flex-col gap-1.5 mt-1">
-            <label className="text-xs font-medium text-slate-600">פירוט מטרת ההלוואה {purpose === 'אחר' && <span className="text-red-500">*</span>}</label>
+            <label className="text-xs font-medium text-slate-600">פירוט מטרת ההלוואה <span className="text-red-500">*</span></label>
             <textarea value={purposeDetails} onChange={e => { setPurposeDetails(e.target.value); clearErr('purposeDetails') }} rows={2}
               className={`rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 resize-none ${fieldErrors.purposeDetails ? 'border-red-400 focus:ring-red-400' : 'border-slate-300 focus:ring-indigo-500'}`} />
             {fieldErrors.purposeDetails && <p className="text-xs text-red-600">{fieldErrors.purposeDetails}</p>}
@@ -176,6 +176,7 @@ export default function EditLoanPage({ params }: { params: Promise<{ id: string 
       {/* Documents */}
       <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-3">
         <h2 className="text-sm font-semibold text-slate-700">מסמכים מצורפים <span className="text-red-500">*</span></h2>
+        <p className="text-xs text-slate-500">יש לצרף: <strong>אישור רב</strong> (חובה), וכן מומלץ הזמנה / מסמכים רפואיים / כל מסמך אחר. עד {MAX_FILES} קבצים — PDF, מסמך או תמונה. גודל מרבי לקובץ: {MAX_FILE_MB}MB.</p>
         {docs.map((d, i) => (
           <div key={`d${i}`} className="flex items-center gap-2 text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-700">
             <FileText size={14} className="text-indigo-500 flex-shrink-0" />

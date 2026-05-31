@@ -8,8 +8,8 @@ import { format } from 'date-fns'
 import { he } from 'date-fns/locale'
 
 const fmtDate = (d?: string) => d ? format(new Date(d), 'dd/MM/yy', { locale: he }) : '—'
-const fmtCur = (n: number) =>
-  new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(n)
+// סמל השקל משמאל למספר
+const fmtCur = (n: number) => `₪${Math.round(Number(n) || 0).toLocaleString('he-IL')}`
 
 type BenRef = { full_name?: string; family_name?: string; id_number?: string; spouse_name?: string; spouse_id_number?: string }
 const borrowerName = (b?: BenRef) =>
@@ -92,8 +92,8 @@ export default function LoansTable({ data }: { data: Loan[] }) {
           <table className="w-full text-sm text-right">
             <thead>
               <tr className="bg-gradient-to-b from-slate-50 to-slate-100/60 border-b border-slate-200">
-                {['שם הלווה', 'ת.ז.', 'סכום', 'תשלומים', 'מטרה', 'תאריך פתיחה', 'סטטוס', 'פעולות'].map(h => (
-                  <th key={h} className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap align-middle">{h}</th>
+                {['שם הלווה', 'ת.ז.', 'סכום', 'תשלומים', 'מטרה', 'תאריך הגשה', 'סטטוס', 'פעולות'].map(h => (
+                  <th key={h} className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap align-middle text-right">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -104,12 +104,12 @@ export default function LoansTable({ data }: { data: Loan[] }) {
                 const b = loan.beneficiary as BenRef | undefined
                 return (
                   <tr key={loan.id} className="even:bg-slate-50/50 hover:bg-indigo-50/50 transition-colors">
-                    <td className="px-4 py-3.5 align-middle font-medium text-slate-800 whitespace-nowrap">{borrowerName(b)}</td>
-                    <td className="px-4 py-3.5 align-middle text-xs font-mono text-slate-500"><span className="ltr-num">{b?.id_number ?? '—'}</span></td>
-                    <td className="px-4 py-3.5 align-middle font-semibold text-slate-900"><span className="ltr-num">{fmtCur(loan.amount)}</span></td>
-                    <td className="px-4 py-3.5 align-middle text-center text-slate-600">{loan.installments}</td>
-                    <td className="px-4 py-3.5 align-middle text-slate-600 max-w-[140px] truncate">{loan.purpose ?? '—'}</td>
-                    <td className="px-4 py-3.5 align-middle text-slate-500 text-xs"><span className="ltr-num">{fmtDate(loan.created_at)}</span></td>
+                    <td className="px-4 py-3.5 align-middle text-right font-medium text-slate-800 whitespace-nowrap">{borrowerName(b)}</td>
+                    <td className="px-4 py-3.5 align-middle text-right text-xs font-mono text-slate-500"><span className="ltr-num">{b?.id_number ?? '—'}</span></td>
+                    <td className="px-4 py-3.5 align-middle text-right font-semibold text-slate-900"><span className="ltr-num">{fmtCur(loan.amount)}</span></td>
+                    <td className="px-4 py-3.5 align-middle text-right text-slate-600">{loan.installments}</td>
+                    <td className="px-4 py-3.5 align-middle text-right text-slate-600 max-w-[140px] truncate">{loan.purpose ?? '—'}</td>
+                    <td className="px-4 py-3.5 align-middle text-right text-slate-500 text-xs"><span className="ltr-num">{fmtDate(loan.created_at)}</span></td>
                     <td className="px-4 py-3.5 align-middle"><LoanStatusControl loan={loan} /></td>
                     <td className="px-4 py-3.5 align-middle">
                       <div className="flex items-center gap-2">
