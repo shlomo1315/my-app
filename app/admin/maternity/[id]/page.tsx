@@ -94,6 +94,7 @@ export default async function MaternityDetailPage({ params }: { params: Promise<
               </span>
             </p>
           )}
+          <p className="text-sm"><span className="text-slate-500">תאריך לידה: </span><span className="ltr-num font-medium text-slate-800">{fmtDate(aid.birth_date)}</span></p>
           {aid.baby_id_number && (
             <p className="text-sm"><span className="text-slate-500">{aid.baby_id_type === 'passport' ? 'דרכון' : 'ת.ז.'}: </span><span className="ltr-num font-mono text-xs">{aid.baby_id_number}</span></p>
           )}

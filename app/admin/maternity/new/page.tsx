@@ -120,12 +120,13 @@ export default function NewMaternityPage() {
     try {
       let certUrl: string | undefined
       if (certFile) {
-        const path = `maternity/${mother.id}/${Date.now()}_${certFile.name}`
-        const { error: upErr } = await supabase.storage.from('documents').upload(path, certFile)
-        if (!upErr) {
-          const { data: pub } = supabase.storage.from('documents').getPublicUrl(path)
-          certUrl = pub.publicUrl
-        }
+        // ניקוי שם הקובץ (עברית/רווחים שוברים מפתח אחסון)
+        const safeName = certFile.name.replace(/[^\w.\-]+/g, '_')
+        const path = `maternity/${mother.id}/${Date.now()}_${safeName}`
+        const { error: upErr } = await supabase.storage.from('documents').upload(path, certFile, { upsert: true })
+        if (upErr) throw new Error(`שגיאה בהעלאת אישור הלידה: ${upErr.message}`)
+        const { data: pub } = supabase.storage.from('documents').getPublicUrl(path)
+        certUrl = pub.publicUrl
       }
 
       const sixEnd = addWeeks(new Date(babyBirthDate), 6).toISOString().split('T')[0]
@@ -190,7 +191,7 @@ export default function NewMaternityPage() {
       })
       setTimeout(() => router.push(`/admin/maternity/${inserted.id}`), 3000)
     } catch (e) {
-      setSaveError('שגיאה בשמירה — נסה שוב')
+      setSaveError(e instanceof Error ? e.message : 'שגיאה בשמירה — נסה שוב')
       console.error(e)
     } finally {
       setSaving(false)
