@@ -201,6 +201,9 @@ export default function NewMaternityPage() {
 
   return (
     <div className="flex flex-col gap-5 max-w-2xl">
+      {savedInfo && (
+        <ConfettiSuccess title="הלידה נוספה בהצלחה! 🎉" subtitle={`למשפחת ${savedInfo.name}`} details={savedInfo.details} />
+      )}
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link href="/admin/maternity" className="text-slate-400 hover:text-slate-600"><ArrowRight size={20} /></Link>
