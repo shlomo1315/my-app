@@ -87,6 +87,11 @@ export interface MaternityAid {
   beneficiary_id: string
   birth_date: string
   baby_name?: string
+  baby_id_type?: 'id' | 'passport'
+  baby_id_number?: string
+  baby_gender?: 'male' | 'female'
+  birth_certificate_url?: string
+  six_weeks_end?: string
   card_number?: string
   card_balance: number
   card_loaded_at?: string

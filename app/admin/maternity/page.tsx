@@ -41,7 +41,7 @@ export default async function MaternityPage() {
         <Link href="/admin/maternity/new">
           <Button>
             <Plus size={16} />
-            פתיחת תיק יולדת
+            לידה חדשה
           </Button>
         </Link>
       </div>
