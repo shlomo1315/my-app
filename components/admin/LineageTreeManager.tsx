@@ -101,26 +101,32 @@ function NodeRow({
           </div>
         ) : (
           <>
-            <span className="flex-1 text-sm text-slate-800 font-medium">{node.name}</span>
-            <span className="text-xs text-slate-400 ml-2">דור {node.generation}</span>
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={startEdit}
+              className="flex-1 min-w-0 text-right text-sm text-slate-800 font-medium hover:text-indigo-600 truncate"
+              title="לחץ לעריכת השם"
+            >
+              {node.name}
+            </button>
+            <span className="text-xs text-slate-400 ml-2 flex-shrink-0">דור {node.generation}</span>
+            <div className="flex items-center gap-1 flex-shrink-0 sm:opacity-60 sm:group-hover:opacity-100 transition-opacity">
               <button
                 onClick={startEdit}
-                className="p-1 rounded text-slate-500 hover:bg-slate-100"
+                className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700"
                 title="ערוך שם"
               >
                 <Pencil size={14} />
               </button>
               <button
                 onClick={() => onAddChild(node.id, node.name)}
-                className="p-1 rounded text-indigo-600 hover:bg-indigo-50"
+                className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50"
                 title="הוסף צאצא"
               >
                 <Plus size={14} />
               </button>
               <button
                 onClick={() => onDelete(node.id, node.name)}
-                className="p-1 rounded text-red-500 hover:bg-red-50"
+                className="p-1.5 rounded-lg text-red-500 hover:bg-red-50"
                 title="מחק"
               >
                 <Trash2 size={14} />
@@ -256,6 +262,10 @@ export default function LineageTreeManager() {
           הוסף שורש
         </button>
       </div>
+
+      <p className="text-xs text-slate-500 -mt-1">
+        לחץ על שם כדי לערוך אותו · <Plus size={11} className="inline -mt-0.5 text-indigo-600" /> להוספת צאצא · <Trash2 size={11} className="inline -mt-0.5 text-red-500" /> למחיקה
+      </p>
 
       {/* Add form */}
       {showForm && (
