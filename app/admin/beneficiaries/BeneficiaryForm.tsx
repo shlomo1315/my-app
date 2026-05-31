@@ -6,12 +6,29 @@ import Button from '@/components/ui/Button'
 import { GitBranch, ChevronLeft, Loader2, Heart, User, Phone, MapPin, Users, FileText } from 'lucide-react'
 
 const MARITAL_OPTIONS = [
-  'נשוי', 'נשואה', 'גרוש', 'גרושה', 'אלמן', 'אלמנה',
+  'נשוי', 'גרוש', 'גרושה', 'אלמן', 'אלמנה',
 ]
-// All remaining statuses involve a spouse (current / former / deceased)
-const MARRIED_STATUSES = MARITAL_OPTIONS
+// Only a currently-married person needs spouse (wife) details
+const SPOUSE_STATUSES = ['נשוי']
+
+const STATUS_OPTIONS = [
+  { value: 'pending', label: 'ממתין לאישור' },
+  { value: 'approved', label: 'מאושר' },
+  { value: 'rejected', label: 'לא מאושר' },
+]
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+interface ChildEntry {
+  name: string
+  id_number: string
+  gender: string
+  birth_date: string
+}
+
+function emptyChild(): ChildEntry {
+  return { name: '', id_number: '', gender: '', birth_date: '' }
+}
 
 interface LineageNode {
   id: string
@@ -173,10 +190,11 @@ interface FormState {
   children_count: string
   notes: string
   lineage_node_id: string
+  eligibility_status: string
 }
 
 interface Props {
-  defaultValues?: Partial<FormState & { lineage_node_id: string }>
+  defaultValues?: Partial<FormState & { lineage_node_id: string; children: ChildEntry[] }>
   beneficiaryId?: string
 }
 
@@ -203,14 +221,34 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
     children_count: String(defaultValues?.children_count ?? '0'),
     notes: defaultValues?.notes ?? '',
     lineage_node_id: defaultValues?.lineage_node_id ?? '',
+    eligibility_status: defaultValues?.eligibility_status ?? 'pending',
   })
   const [lineagePath, setLineagePath] = useState<string[]>([])
+  const [children, setChildren] = useState<ChildEntry[]>(
+    Array.isArray(defaultValues?.children) ? defaultValues!.children : []
+  )
+  const [childErrors, setChildErrors] = useState<Partial<Record<keyof ChildEntry, string>>[]>([])
 
   const set = (k: keyof FormState) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       setForm(f => ({ ...f, [k]: e.target.value }))
 
-  const showSpouseFields = MARRIED_STATUSES.includes(form.marital_status)
+  // Sync the number-of-children field with the per-child detail rows
+  const handleChildrenCount = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value
+    setForm(f => ({ ...f, children_count: raw }))
+    const n = Math.max(0, Math.min(30, parseInt(raw) || 0))
+    setChildren(prev => {
+      const next = prev.slice(0, n)
+      while (next.length < n) next.push(emptyChild())
+      return next
+    })
+  }
+
+  const setChild = (idx: number, key: keyof ChildEntry, value: string) =>
+    setChildren(prev => prev.map((c, i) => (i === idx ? { ...c, [key]: value } : c)))
+
+  const showSpouseFields = SPOUSE_STATUSES.includes(form.marital_status)
 
   const validate = (): boolean => {
     const errs: Partial<Record<keyof FormState, string>> = {}
@@ -244,8 +282,20 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
     // שיוך שושלת
     if (!form.lineage_node_id) errs.lineage_node_id = 'יש לבחור שיוך שושלת'
 
+    // ילדים
+    const childErrs: Partial<Record<keyof ChildEntry, string>>[] = children.map(c => {
+      const ce: Partial<Record<keyof ChildEntry, string>> = {}
+      if (!c.name.trim()) ce.name = 'שדה חובה'
+      if (!c.gender) ce.gender = 'שדה חובה'
+      if (!c.birth_date) ce.birth_date = 'שדה חובה'
+      if (c.id_number.trim() && !/^\d{5,9}$/.test(c.id_number.replace(/\D/g, ''))) ce.id_number = 'ת.ז. לא תקינה'
+      return ce
+    })
+    setChildErrors(childErrs)
+    const hasChildErrors = childErrs.some(ce => Object.keys(ce).length > 0)
+
     setErrors(errs)
-    return Object.keys(errs).length === 0
+    return Object.keys(errs).length === 0 && !hasChildErrors
   }
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -266,9 +316,16 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
         marital_status: form.marital_status || null,
         spouse_name: showSpouseFields ? (form.spouse_name || null) : null,
         spouse_id_number: showSpouseFields ? (form.spouse_id_number.replace(/\D/g, '') || null) : null,
-        children_count: parseInt(form.children_count) || 0,
+        children_count: children.length,
+        children: children.map(c => ({
+          name: c.name.trim(),
+          id_number: c.id_number.replace(/\D/g, '') || null,
+          gender: c.gender || null,
+          birth_date: c.birth_date || null,
+        })),
         notes: form.notes || null,
         lineage_node_id: form.lineage_node_id || null,
+        eligibility_status: form.eligibility_status || 'pending',
       }
 
       if (isEdit) {
@@ -295,7 +352,27 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
 
-      {/* ── Marital status FIRST ── */}
+      {/* ── Registration status ── */}
+      <Section title="סטטוס רישום" icon={FileText}>
+        <div className="flex flex-wrap gap-2">
+          {STATUS_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setForm(f => ({ ...f, eligibility_status: opt.value }))}
+              className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                form.eligibility_status === opt.value
+                  ? 'bg-indigo-600 text-white border-indigo-600'
+                  : 'bg-white text-slate-700 border-slate-300 hover:border-indigo-400 hover:bg-indigo-50'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      {/* ── Marital status ── */}
       <Section title="מצב משפחתי" icon={Heart}>
         <div className="flex flex-wrap gap-2 mb-1">
           {MARITAL_OPTIONS.map(opt => (
@@ -317,17 +394,11 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
 
         {showSpouseFields && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-100">
-            <p className="col-span-2 text-xs font-medium text-slate-500">
-              {form.marital_status === 'אלמן' || form.marital_status === 'אלמנה'
-                ? 'פרטי בן/בת הזוג המנוח/ה'
-                : form.marital_status === 'גרוש' || form.marital_status === 'גרושה'
-                ? 'פרטי בן/בת הזוג לשעבר'
-                : 'פרטי בן/בת הזוג'}
-            </p>
-            <Field label="שם בן/בת הזוג" required error={errors.spouse_name}>
+            <p className="col-span-2 text-xs font-medium text-slate-500">פרטי האישה</p>
+            <Field label="שם האישה" required error={errors.spouse_name}>
               <FInput value={form.spouse_name} onChange={set('spouse_name')} placeholder="שם מלא" required />
             </Field>
-            <Field label='ת"ז בן/בת הזוג' required error={errors.spouse_id_number}>
+            <Field label='ת"ז האישה' required error={errors.spouse_id_number}>
               <FInput
                 value={form.spouse_id_number}
                 onChange={set('spouse_id_number')}
@@ -375,10 +446,64 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
             <FInput type="date" value={form.birth_date} onChange={set('birth_date')} dir="ltr" required />
           </Field>
           <Field label="מספר ילדים" required>
-            <FInput type="number" min="0" max="30" value={form.children_count} onChange={set('children_count')} required />
+            <FInput type="number" min="0" max="30" value={form.children_count} onChange={handleChildrenCount} required />
           </Field>
         </div>
       </Section>
+
+      {/* ── Children details ── */}
+      {children.length > 0 && (
+        <Section title={`פרטי הילדים (${children.length})`} icon={Users}>
+          <div className="flex flex-col gap-4">
+            {children.map((child, idx) => (
+              <div key={idx} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold text-indigo-600 mb-3">ילד/ה {idx + 1}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Field label="שם הילד/ה" required error={childErrors[idx]?.name}>
+                    <FInput
+                      value={child.name}
+                      onChange={e => setChild(idx, 'name', e.target.value)}
+                      placeholder="שם מלא"
+                      required
+                    />
+                  </Field>
+                  <Field label="תעודת זהות" error={childErrors[idx]?.id_number}>
+                    <FInput
+                      value={child.id_number}
+                      onChange={e => setChild(idx, 'id_number', e.target.value)}
+                      placeholder="123456789"
+                      dir="ltr"
+                      inputMode="numeric"
+                      maxLength={9}
+                    />
+                  </Field>
+                  <Field label="מין" required error={childErrors[idx]?.gender}>
+                    <select
+                      value={child.gender}
+                      onChange={e => setChild(idx, 'gender', e.target.value)}
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
+                      required
+                    >
+                      <option value="">בחר...</option>
+                      <option value="male">זכר</option>
+                      <option value="female">נקבה</option>
+                    </select>
+                  </Field>
+                  <Field label="תאריך לידה" required error={childErrors[idx]?.birth_date}>
+                    <FInput
+                      type="date"
+                      value={child.birth_date}
+                      onChange={e => setChild(idx, 'birth_date', e.target.value)}
+                      dir="ltr"
+                      required
+                    />
+                  </Field>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
 
       {/* ── Contact ── */}
       <Section title="פרטי קשר" icon={Phone}>
