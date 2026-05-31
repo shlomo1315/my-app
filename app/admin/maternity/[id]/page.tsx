@@ -14,7 +14,7 @@ async function getAid(id: string): Promise<MaternityAid | null> {
     const supabase = await createClient()
     const { data } = await supabase
       .from('maternity_aids')
-      .select('*, beneficiary:beneficiaries(full_name, phone, id_number)')
+      .select('*, beneficiary:beneficiaries(full_name, family_name, phone, id_number, spouse_name, spouse_id_number)')
       .eq('id', id)
       .single()
     return data
@@ -45,7 +45,17 @@ export default async function MaternityDetailPage({ params }: { params: Promise<
     )
   }
 
-  const beneficiary = aid.beneficiary as { full_name: string; phone?: string; id_number: string } | undefined
+  const beneficiary = aid.beneficiary as {
+    full_name: string; family_name?: string; phone?: string; id_number: string
+    spouse_name?: string; spouse_id_number?: string
+  } | undefined
+
+  // שם היולדת (האישה) = שם משפחה + שם האישה. נפילה לשם הרשומה אם חסר
+  const motherName = beneficiary?.spouse_name
+    ? [beneficiary.family_name, beneficiary.spouse_name].filter(Boolean).join(' ')
+    : [beneficiary?.family_name, beneficiary?.full_name].filter(Boolean).join(' ') || 'תיק יולדת'
+  const motherId = beneficiary?.spouse_id_number ?? beneficiary?.id_number
+
   const expiresIn = aid.card_expires_at
     ? Math.ceil((new Date(aid.card_expires_at).getTime() - Date.now()) / 86400000)
     : null
@@ -56,8 +66,8 @@ export default async function MaternityDetailPage({ params }: { params: Promise<
         <div className="flex items-center gap-3">
           <Link href="/admin/maternity" className="text-slate-400 hover:text-slate-600"><ArrowRight size={20} /></Link>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">{beneficiary?.full_name ?? 'תיק יולדת'}</h1>
-            <p className="text-sm text-slate-500">תאריך לידה: {fmtDate(aid.birth_date)}</p>
+            <h1 className="text-xl font-bold text-slate-900">{motherName}</h1>
+            {motherId && <p className="text-sm text-slate-500 ltr-num">ת.ז. {motherId}</p>}
           </div>
         </div>
         <StatusBadge status={aid.status} />
@@ -67,10 +77,23 @@ export default async function MaternityDetailPage({ params }: { params: Promise<
         <Card className="flex flex-col gap-1">
           <div className="flex items-center gap-2 text-indigo-600 mb-2">
             <Baby size={16} />
-            <span className="text-xs font-semibold text-slate-500 uppercase">פרטי לידה</span>
+            <span className="text-xs font-semibold text-slate-500 uppercase">פרטי התינוק</span>
           </div>
-          <p className="text-sm"><span className="text-slate-500">שם תינוק: </span>{aid.baby_name ?? '—'}</p>
-          <p className="text-sm"><span className="text-slate-500">תאריך לידה: </span><span className="ltr-num">{fmtDate(aid.birth_date)}</span></p>
+          <p className="text-sm"><span className="text-slate-500">שם התינוק: </span><span className="font-medium text-slate-800">{aid.baby_name ?? '—'}</span></p>
+          {aid.baby_gender && (
+            <p className="text-sm">
+              <span className="text-slate-500">מין: </span>
+              <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${aid.baby_gender === 'male' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}`}>
+                {aid.baby_gender === 'male' ? 'בן' : 'בת'}
+              </span>
+            </p>
+          )}
+          {aid.baby_id_number && (
+            <p className="text-sm"><span className="text-slate-500">{aid.baby_id_type === 'passport' ? 'דרכון' : 'ת.ז.'}: </span><span className="ltr-num font-mono text-xs">{aid.baby_id_number}</span></p>
+          )}
+          {aid.six_weeks_end && (
+            <p className="text-sm"><span className="text-slate-500">סיום 6 שבועות: </span><span className="ltr-num text-indigo-600 font-medium">{fmtDate(aid.six_weeks_end)}</span></p>
+          )}
         </Card>
 
         <Card className="flex flex-col gap-1">
@@ -80,7 +103,6 @@ export default async function MaternityDetailPage({ params }: { params: Promise<
           </div>
           <p className="text-sm"><span className="text-slate-500">מספר כרטיס: </span><span className="ltr-num font-mono text-xs">{aid.card_number ?? '—'}</span></p>
           <p className="text-sm"><span className="text-slate-500">יתרה: </span><span className="text-green-700 font-bold">{fmtCur(aid.card_balance)}</span></p>
-          <p className="text-sm"><span className="text-slate-500">טעינה שבועית: </span>{fmtCur(aid.weekly_amount)}</p>
           {expiresIn !== null && (
             <p className={`text-xs font-medium mt-1 ${expiresIn <= 7 ? 'text-red-600' : 'text-slate-500'}`}>
               {expiresIn > 0 ? `פג תוקף בעוד ${expiresIn} ימים` : 'תוקף הכרטיס פג'}

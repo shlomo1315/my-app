@@ -98,7 +98,8 @@ function StatusControl({ aid }: { aid: MaternityAid }) {
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute z-20 mt-1 right-0 w-40 bg-white rounded-xl border border-slate-200 shadow-lg py-1">
+          {/* נפתח לצד שמאל של הכפתור כדי לא להיחתך בתחתית הטבלה */}
+          <div className="absolute z-20 top-0 left-full ml-2 w-40 bg-white rounded-xl border border-slate-200 shadow-lg py-1">
             {options.filter(o => o.value !== aid.status).map(o => {
               const OIcon = o.icon
               return (
