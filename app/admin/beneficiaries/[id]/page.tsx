@@ -15,7 +15,7 @@ async function getBeneficiary(id: string): Promise<Beneficiary | null> {
     const supabase = await createClient()
     const { data } = await supabase
       .from('beneficiaries')
-      .select('*, family:families(*)')
+      .select('*')
       .eq('id', id)
       .single()
     return data
@@ -57,7 +57,7 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
             <ArrowRight size={20} />
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">{beneficiary.full_name}</h1>
+            <h1 className="text-xl font-bold text-slate-900">{[beneficiary.family_name, beneficiary.full_name].filter(Boolean).join(' ')}</h1>
             <p className="text-sm text-slate-500 ltr-num">{beneficiary.id_number}</p>
           </div>
         </div>
@@ -74,11 +74,11 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card>
-          <h2 className="text-xs font-semibold text-slate-500 uppercase mb-3">פרטים אישיים</h2>
+          <h2 className="text-xs font-semibold text-slate-500 uppercase mb-3">פרטי הבעל</h2>
           <div className="space-y-2.5">
-            <DetailRow label="שם מלא" value={beneficiary.full_name} />
+            <DetailRow label="שם משפחה" value={beneficiary.family_name ?? '—'} />
+            <DetailRow label="שם פרטי" value={beneficiary.full_name} />
             <DetailRow label="ת.ז." value={beneficiary.id_number} ltr />
-            <DetailRow label="מגדר" value={beneficiary.gender ? GENDER_LABELS[beneficiary.gender] : '—'} />
             <DetailRow label="תאריך לידה" value={formatDate(beneficiary.birth_date)} />
             <DetailRow label="מצב משפחתי" value={beneficiary.marital_status ?? '—'} />
             <DetailRow label="מספר ילדים" value={String(beneficiary.children_count)} />
@@ -93,23 +93,40 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
             <DetailRow label="אימייל" value={beneficiary.email ?? '—'} ltr />
             <DetailRow label="כתובת" value={beneficiary.address ?? '—'} icon={<MapPin size={13} />} />
             <DetailRow label="עיר" value={beneficiary.city ?? '—'} />
-            <DetailRow label="מספר נדרים" value={beneficiary.nedarim_id ?? '—'} ltr />
           </div>
         </Card>
       </div>
 
-      {beneficiary.family && (
+      {beneficiary.spouse_name && (
+        <Card>
+          <h2 className="text-xs font-semibold text-slate-500 uppercase mb-3">פרטי האישה</h2>
+          <div className="space-y-2.5">
+            <DetailRow label="שם" value={beneficiary.spouse_name} />
+            {beneficiary.spouse_id_number && (
+              <DetailRow label="ת.ז." value={beneficiary.spouse_id_number} ltr />
+            )}
+          </div>
+        </Card>
+      )}
+
+      {Array.isArray(beneficiary.children) && (beneficiary.children as unknown[]).length > 0 && (
         <Card>
           <div className="flex items-center gap-2 mb-3">
             <Users size={16} className="text-indigo-500" />
-            <h2 className="text-xs font-semibold text-slate-500 uppercase">משפחה</h2>
+            <h2 className="text-xs font-semibold text-slate-500 uppercase">ילדים ({(beneficiary.children as unknown[]).length})</h2>
           </div>
-          <Link
-            href={`/admin/families/${beneficiary.family_id}`}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
-          >
-            {(beneficiary.family as { family_name: string }).family_name}
-          </Link>
+          <div className="flex flex-col gap-2">
+            {(beneficiary.children as { name: string; id_number?: string; doc_type?: string; gender?: string; birth_date?: string }[]).map((c, i) => (
+              <div key={i} className="flex items-center justify-between text-sm py-1.5 border-b border-slate-100 last:border-0">
+                <span className="font-medium text-slate-800">{c.name}</span>
+                <div className="flex items-center gap-3 text-xs text-slate-500">
+                  {c.gender && <span>{c.gender === 'male' ? 'זכר' : 'נקבה'}</span>}
+                  {c.birth_date && <span>{formatDate(c.birth_date)}</span>}
+                  {c.id_number && <span className="ltr-num font-mono">{c.id_number}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
         </Card>
       )}
 
