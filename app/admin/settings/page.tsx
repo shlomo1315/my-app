@@ -48,7 +48,7 @@ export default async function SettingsPage() {
         </Card>
 
         <Card padding="none">
-          <UsersManager initialProfiles={profiles} isConfigured={isSupabaseConfigured()} />
+          <UsersManager initialProfiles={profiles} isConfigured={!!isSupabaseConfigured()} />
         </Card>
 
         <Card>
