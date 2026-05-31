@@ -29,6 +29,7 @@ export default function NewMaternityPage() {
   const [mother, setMother] = useState<Beneficiary | null>(null)
 
   // Step 2 — baby details
+  const [babyName, setBabyName] = useState('')
   const [babyIdType, setBabyIdType] = useState<'id' | 'passport'>('id')
   const [babyIdNumber, setBabyIdNumber] = useState('')
   const [babyGender, setBabyGender] = useState<'male' | 'female' | ''>('')
@@ -78,6 +79,7 @@ export default function NewMaternityPage() {
 
   const validate = (): Record<string, string> => {
     const e: Record<string, string> = {}
+    if (!babyName.trim()) e.babyName = 'שם תינוק חובה'
     if (!babyIdNumber.trim()) {
       e.babyIdNumber = babyIdType === 'id' ? 'מספר תעודת זהות תינוק חובה' : 'מספר דרכון חובה'
     } else if (babyIdType === 'id' && !validateIsraeliId(babyIdNumber)) {
@@ -115,6 +117,7 @@ export default function NewMaternityPage() {
         .insert({
           beneficiary_id: mother.id,
           birth_date: babyBirthDate,
+          baby_name: babyName.trim() || null,
           baby_id_type: babyIdType,
           baby_id_number: babyIdNumber || null,
           baby_gender: babyGender || null,
@@ -233,6 +236,18 @@ export default function NewMaternityPage() {
               פרטי התינוק
             </h2>
 
+            {/* Baby name */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-medium text-slate-600">שם התינוק <span className="text-red-500">*</span></label>
+              <input
+                type="text" value={babyName}
+                onChange={e => { setBabyName(e.target.value); clearErr('babyName') }}
+                placeholder="שם פרטי של התינוק/ת"
+                className={`rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${fieldErrors.babyName ? 'border-red-400 focus:ring-red-400' : 'border-slate-300 focus:ring-indigo-500'}`}
+              />
+              {fieldErrors.babyName && <p className="text-xs text-red-600">{fieldErrors.babyName}</p>}
+            </div>
+
             {/* ID type + number */}
             <div className="flex flex-col gap-2">
               <label className="text-xs font-medium text-slate-600">סוג מסמך תינוק <span className="text-red-500">*</span></label>
@@ -258,7 +273,7 @@ export default function NewMaternityPage() {
             <div className="flex flex-col gap-2">
               <label className="text-xs font-medium text-slate-600">מין התינוק <span className="text-red-500">*</span></label>
               <div className="flex gap-2">
-                {([['male', 'זכר'], ['female', 'נקבה']] as const).map(([val, label]) => (
+                {([['male', 'בן'], ['female', 'בת']] as const).map(([val, label]) => (
                   <button key={val} onClick={() => { setBabyGender(val); clearErr('babyGender') }}
                     className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${babyGender === val ? (val === 'male' ? 'bg-blue-600 border-blue-600 text-white' : 'bg-pink-500 border-pink-500 text-white') : `${fieldErrors.babyGender ? 'border-red-400' : 'border-slate-300'} text-slate-600 hover:bg-slate-50`}`}>
                     {label}
