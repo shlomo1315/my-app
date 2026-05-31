@@ -40,7 +40,7 @@ export default async function EditBeneficiaryPage({ params }: { params: Promise<
         lineage_manual: Array.isArray(b.lineage_manual) ? (b.lineage_manual as string[]) : [],
         eligibility_status: b.eligibility_status ?? 'pending',
         children: Array.isArray(b.children)
-          ? (b.children as { name?: string; id_number?: string; doc_type?: string; gender?: string; birth_date?: string; marital_status?: string }[]).map(
+          ? (b.children as { name?: string; id_number?: string; doc_type?: string; gender?: string; birth_date?: string; marital_status?: string; birth_status?: 'pending' | 'approved'; maternity_aid_id?: string }[]).map(
               (c) => ({
                 name: c.name ?? '',
                 id_number: c.id_number ?? '',
@@ -48,6 +48,8 @@ export default async function EditBeneficiaryPage({ params }: { params: Promise<
                 gender: c.gender ?? '',
                 birth_date: c.birth_date ?? '',
                 marital_status: c.marital_status ?? '',
+                birth_status: c.birth_status,
+                maternity_aid_id: c.maternity_aid_id,
               })
             )
           : [],

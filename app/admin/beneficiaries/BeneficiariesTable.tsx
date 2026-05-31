@@ -75,6 +75,28 @@ const columns: Column<Beneficiary>[] = [
       ),
   },
   {
+    key: 'spouse_name',
+    header: 'שם האישה',
+    sortable: true,
+    render: (row) =>
+      row.spouse_name ? (
+        <span className="text-sm text-slate-700">{row.spouse_name}</span>
+      ) : (
+        <span className="text-slate-300">—</span>
+      ),
+  },
+  {
+    key: 'spouse_id_number',
+    header: 'ת.ז. האישה',
+    sortable: true,
+    render: (row) =>
+      row.spouse_id_number ? (
+        <span dir="ltr" className="font-mono text-xs text-slate-600 inline-block text-left tabular-nums">{row.spouse_id_number}</span>
+      ) : (
+        <span className="text-slate-300">—</span>
+      ),
+  },
+  {
     key: 'phone',
     header: 'טלפון',
     sortable: true,
