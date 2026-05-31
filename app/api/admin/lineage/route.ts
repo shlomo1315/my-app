@@ -72,6 +72,28 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ node: data })
 }
 
+export async function PATCH(request: NextRequest) {
+  const user = await verifyStaff()
+  if (!user) return NextResponse.json({ error: 'לא מורשה' }, { status: 401 })
+
+  const body = await request.json()
+  const { id, name, notes } = body
+
+  if (!id) return NextResponse.json({ error: 'חסר ID' }, { status: 400 })
+  if (!name?.trim()) return NextResponse.json({ error: 'שם חובה' }, { status: 400 })
+
+  const admin = await getAdminClient()
+  const { data, error } = await admin
+    .from('lineage_nodes')
+    .update({ name: name.trim(), notes: notes?.trim() || null })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ node: data })
+}
+
 export async function DELETE(request: NextRequest) {
   const user = await verifyStaff()
   if (!user) return NextResponse.json({ error: 'לא מורשה' }, { status: 401 })
