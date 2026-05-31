@@ -1,8 +1,9 @@
-import { Users, Bell, Database, Shield } from 'lucide-react'
+import { Bell, Database, Shield } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
 import { Profile, ROLE_LABELS } from '@/types'
 import LineageTreeManager from '@/components/admin/LineageTreeManager'
+import UsersManager from './UsersManager'
 
 async function getProfiles(): Promise<Profile[]> {
   if (!isSupabaseConfigured()) return []
@@ -47,40 +48,7 @@ export default async function SettingsPage() {
         </Card>
 
         <Card padding="none">
-          <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Users size={16} className="text-indigo-500" />
-              <h2 className="text-sm font-semibold text-slate-700">משתמשי מערכת</h2>
-            </div>
-            <button className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">+ הוסף משתמש</button>
-          </div>
-          {profiles.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-sm">
-              {isSupabaseConfigured() ? 'לא נמצאו משתמשים' : 'חיבור Supabase נדרש לצפייה במשתמשים'}
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {profiles.map((p) => (
-                <div key={p.id} className="px-5 py-3 flex items-center justify-between hover:bg-slate-50">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 text-xs font-bold">
-                      {p.full_name.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-slate-800">{p.full_name}</p>
-                      <p className="text-xs text-slate-500 ltr-num">{p.email}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs bg-indigo-50 text-indigo-700 rounded-full px-2 py-0.5 font-medium">
-                      {ROLE_LABELS[p.role]}
-                    </span>
-                    <div className={`w-2 h-2 rounded-full ${p.is_active ? 'bg-green-500' : 'bg-slate-300'}`} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <UsersManager initialProfiles={profiles} isConfigured={isSupabaseConfigured()} />
         </Card>
 
         <Card>
