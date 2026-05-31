@@ -218,7 +218,15 @@ function DataView({ home, aids }: { home: string; aids: Aid[] }) {
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<Aid | null>(null)
   const [logoErr, setLogoErr] = useState(false)
+  const [hebrewInfo, setHebrewInfo] = useState<{ hebrewDate: string; parasha: string; hebrewYear: string } | null>(null)
   const today = new Date()
+
+  useEffect(() => {
+    fetch('/api/portal/hebrewdate')
+      .then(r => r.json())
+      .then(d => setHebrewInfo(d))
+      .catch(() => {})
+  }, [])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -251,8 +259,13 @@ function DataView({ home, aids }: { home: string; aids: Aid[] }) {
             </h1>
           </div>
           <div className="text-left text-xs text-slate-400 flex-shrink-0">
-            <p>{format(today, 'EEEE', { locale: he })}</p>
-            <p className="font-medium text-slate-600">{format(today, 'd/M/yyyy')}</p>
+            <p>{format(today, 'EEEE', { locale: he })} · {format(today, 'd/M/yyyy')}</p>
+            {hebrewInfo?.hebrewDate && (
+              <p className="font-medium text-slate-700 mt-0.5">{hebrewInfo.hebrewDate}</p>
+            )}
+            {hebrewInfo?.parasha && (
+              <p className="text-indigo-500 font-semibold mt-0.5">{hebrewInfo.parasha}</p>
+            )}
           </div>
         </div>
       </div>
