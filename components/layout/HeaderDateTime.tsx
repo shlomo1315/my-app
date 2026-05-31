@@ -1,7 +1,19 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { HDate, Sedra, Locale } from '@hebcal/core'
-import { Clock, CalendarDays, BookOpen } from 'lucide-react'
+import { HDate, Sedra, Locale, HebrewCalendar, flags } from '@hebcal/core'
+import { Clock, CalendarDays, BookOpen, Sparkles } from 'lucide-react'
+
+// חגים ומועדים יהודיים בלבד (כולל ראש חודש) — ללא ימי החג הישראליים המודרניים
+function computeHolidays(d: Date): string[] {
+  try {
+    const evs = HebrewCalendar.getHolidaysOnDate(new HDate(d), true) ?? []
+    return evs
+      .filter(ev => !(ev.getFlags() & flags.MODERN_HOLIDAY))
+      .map(ev => ev.render('he-x-NoNikud'))
+  } catch {
+    return []
+  }
+}
 
 // פרשת השבוע (לפי לוח ארץ ישראל) בעברית ללא ניקוד
 function computeParsha(d: Date): string {
@@ -28,11 +40,13 @@ export default function HeaderDateTime() {
 
   const time = now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   const greg = now.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  // תאריך עברי בגימטריה (יום + חודש + שנה באותיות עבריות) — למשל "ט״ז בסיון תשפ״ו"
   let hebrew = ''
   try {
-    hebrew = new Intl.DateTimeFormat('he-u-ca-hebrew', { day: 'numeric', month: 'long', year: 'numeric' }).format(now)
+    hebrew = new HDate(now).renderGematriya(true)
   } catch { /* ignore */ }
   const parsha = computeParsha(now)
+  const holidays = computeHolidays(now)
 
   return (
     <div className="hidden md:flex items-center gap-3 text-xs">
@@ -51,6 +65,14 @@ export default function HeaderDateTime() {
           <span className="h-3.5 w-px bg-slate-200" />
           <span className="inline-flex items-center gap-1 text-indigo-700 font-medium">
             <BookOpen size={13} className="text-indigo-500" /> {parsha}
+          </span>
+        </>
+      )}
+      {holidays.length > 0 && (
+        <>
+          <span className="h-3.5 w-px bg-slate-200" />
+          <span className="inline-flex items-center gap-1 text-amber-600 font-semibold">
+            <Sparkles size={13} className="text-amber-500" /> {holidays.join(' · ')}
           </span>
         </>
       )}

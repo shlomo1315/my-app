@@ -526,6 +526,7 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
         lineage_node_id: form.lineage_node_id || null,
         lineage_manual: manualLineage.map(s => s.trim()).filter(Boolean),
         eligibility_status: form.eligibility_status || 'pending',
+        updated_at: new Date().toISOString(),
       }
 
       const familyName = [payload.family_name, payload.spouse_name || payload.full_name].filter(Boolean).join(' ')

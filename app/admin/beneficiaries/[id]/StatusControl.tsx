@@ -37,7 +37,7 @@ export default function StatusControl({ id, status }: { id: string; status: Elig
   const setStatus = async (next: EligibilityStatus) => {
     setSaving(true)
     try {
-      const { error } = await supabase.from('beneficiaries').update({ eligibility_status: next }).eq('id', id)
+      const { error } = await supabase.from('beneficiaries').update({ eligibility_status: next, updated_at: new Date().toISOString() }).eq('id', id)
       if (error) throw error
       setOpen(false)
       router.refresh()
