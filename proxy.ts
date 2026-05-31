@@ -1,6 +1,12 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+function noCache(res: NextResponse) {
+  // Stop NetFree / browser from serving stale admin pages (incl. cached 404s)
+  res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+  return res
+}
+
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request })
 
@@ -12,7 +18,7 @@ export async function proxy(request: NextRequest) {
 
   if (!isConfigured) {
     // Dev mode: allow all routes, just protect against login loops
-    return response
+    return isAdminRoute ? noCache(response) : response
   }
 
   const supabase = createServerClient(
@@ -46,7 +52,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/admin/dashboard', request.url))
   }
 
-  return response
+  return isAdminRoute ? noCache(response) : response
 }
 
 export const config = {
