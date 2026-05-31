@@ -8,11 +8,13 @@ export const revalidate = 0
 
 const NO_STORE = { 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0' }
 
-async function getAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+// Prefer the service-role key (full access for writes); fall back to the public
+// anon key so reads still work even if the service key isn't configured on the host.
+function getAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) return null
+  return createClient(url, key)
 }
 
 async function verifyStaff() {
@@ -34,7 +36,9 @@ async function verifyStaff() {
 }
 
 export async function GET() {
-  const admin = await getAdminClient()
+  const admin = getAdminClient()
+  if (!admin) return NextResponse.json({ error: 'חיבור Supabase לא מוגדר' }, { status: 500, headers: NO_STORE })
+
   const { data, error } = await admin
     .from('lineage_nodes')
     .select('*')
@@ -54,7 +58,8 @@ export async function POST(request: NextRequest) {
 
   if (!name?.trim()) return NextResponse.json({ error: 'שם חובה' }, { status: 400 })
 
-  const admin = await getAdminClient()
+  const admin = getAdminClient()
+  if (!admin) return NextResponse.json({ error: 'חיבור Supabase לא מוגדר' }, { status: 500 })
 
   let generation = 1
   if (parent_id) {
@@ -86,7 +91,9 @@ export async function PATCH(request: NextRequest) {
 
   if (!id) return NextResponse.json({ error: 'חסר ID' }, { status: 400 })
 
-  const admin = await getAdminClient()
+  const admin = getAdminClient()
+  if (!admin) return NextResponse.json({ error: 'חיבור Supabase לא מוגדר' }, { status: 500 })
+
   const updates: Record<string, unknown> = {}
   if (name !== undefined) {
     if (!name.trim()) return NextResponse.json({ error: 'שם חובה' }, { status: 400 })
@@ -154,7 +161,9 @@ export async function DELETE(request: NextRequest) {
   const id = request.nextUrl.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'חסר ID' }, { status: 400 })
 
-  const admin = await getAdminClient()
+  const admin = getAdminClient()
+  if (!admin) return NextResponse.json({ error: 'חיבור Supabase לא מוגדר' }, { status: 500 })
+
   const { error } = await admin.from('lineage_nodes').delete().eq('id', id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
