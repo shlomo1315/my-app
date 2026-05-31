@@ -48,7 +48,18 @@ export interface Beneficiary {
   lineage_node_id?: string
   lineage_manual?: string[]
   children_count: number
-  children?: { name: string; id_number: string | null; gender: string | null; birth_date: string | null }[]
+  children?: {
+    name: string
+    id_number: string | null
+    gender: string | null
+    birth_date: string | null
+    doc_type?: string
+    marital_status?: string
+    // סטטוס לידה — מסומן רק עבור ילדים שנכנסו דרך תיק יולדת.
+    // 'pending' = ממתין לאישור לידה · 'approved' = הלידה אושרה
+    birth_status?: 'pending' | 'approved'
+    maternity_aid_id?: string
+  }[]
   eligibility_status: EligibilityStatus
   is_active: boolean
   notes?: string

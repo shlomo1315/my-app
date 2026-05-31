@@ -49,7 +49,7 @@ const STATUS_PILL: Record<string, { label: string; cls: string; icon: typeof Clo
 }
 
 // ── Clickable status control ────────────────────────────────────────────────────
-function StatusControl({ aid }: { aid: MaternityAid }) {
+export function StatusControl({ aid }: { aid: MaternityAid }) {
   const router = useRouter()
   const supabase = createClient()
   const [open, setOpen] = useState(false)
@@ -65,10 +65,9 @@ function StatusControl({ aid }: { aid: MaternityAid }) {
       const { error } = await supabase.from('maternity_aids').update({ status: next }).eq('id', aid.id)
       if (error) throw error
 
-      // אם מאשרים את הלידה (active) → הוסף את התינוק לרשימת הילדים של המשפחה
-      if (next === 'active') {
-        await addBabyToFamily(supabase, aid)
-      }
+      // סנכרון סטטוס התינוק בכרטסת המשפחה לפי סטטוס תיק היולדת
+      // active → הלידה מאושרת · pending → חוזר לממתין · cancelled → מוסר מהכרטסת
+      await syncBabyStatusInFamily(supabase, aid, next)
       setOpen(false)
       router.refresh()
     } catch (err: unknown) {
@@ -116,29 +115,51 @@ function StatusControl({ aid }: { aid: MaternityAid }) {
   )
 }
 
-// הוספת התינוק לכרטסת המשפחה (טבלת beneficiaries → children JSON)
-async function addBabyToFamily(supabase: ReturnType<typeof createClient>, aid: MaternityAid) {
+// התאמת התינוק שנשמר בכרטסת המשפחה לתיק היולדת הנוכחי
+const isSameBaby = (c: Record<string, unknown>, aid: MaternityAid) =>
+  (c.maternity_aid_id && c.maternity_aid_id === aid.id) ||
+  (aid.baby_id_number && c.id_number === aid.baby_id_number) ||
+  (c.name === aid.baby_name && c.birth_date === aid.birth_date)
+
+// סנכרון סטטוס התינוק בכרטסת המשפחה (beneficiaries → children JSON) לפי סטטוס תיק היולדת
+async function syncBabyStatusInFamily(
+  supabase: ReturnType<typeof createClient>,
+  aid: MaternityAid,
+  next: MaternityStatus,
+) {
   const mother = aid.beneficiary as MotherRef | undefined
   if (!mother?.id || !aid.baby_name) return
 
   const existing = Array.isArray(mother.children) ? (mother.children as Record<string, unknown>[]) : []
+  const idx = existing.findIndex(c => isSameBaby(c, aid))
 
-  // מניעת כפילות — אם כבר קיים ילד עם אותו שם+ת.ז. אל תוסיף שוב
-  const dup = existing.some(c =>
-    (aid.baby_id_number && c.id_number === aid.baby_id_number) ||
-    (c.name === aid.baby_name && c.birth_date === aid.birth_date)
-  )
-  if (dup) return
+  let updatedChildren: Record<string, unknown>[]
 
-  const newChild = {
-    name: aid.baby_name,
-    id_number: aid.baby_id_number ?? null,
-    doc_type: aid.baby_id_type ?? 'id',
-    gender: aid.baby_gender ?? null,
-    birth_date: aid.birth_date ?? null,
-    marital_status: 'single', // תינוק שזה עתה נולד — לא נשוי
+  if (next === 'cancelled') {
+    // דחיית הלידה — נסיר מהכרטסת רק אם הילד נכנס דרך תיק היולדת (יש לו birth_status)
+    if (idx === -1) return
+    const child = existing[idx]
+    if (!child.birth_status && !child.maternity_aid_id) return
+    updatedChildren = existing.filter((_, i) => i !== idx)
+  } else {
+    // active → מאושר · pending → ממתין לאישור לידה
+    const birth_status = next === 'active' ? 'approved' : 'pending'
+    const babyData = {
+      name: aid.baby_name,
+      id_number: aid.baby_id_number ?? null,
+      doc_type: aid.baby_id_type ?? 'id',
+      gender: aid.baby_gender ?? null,
+      birth_date: aid.birth_date ?? null,
+      marital_status: 'single', // תינוק שזה עתה נולד — לא נשוי
+      maternity_aid_id: aid.id,
+      birth_status,
+    }
+    if (idx === -1) {
+      updatedChildren = [...existing, babyData]
+    } else {
+      updatedChildren = existing.map((c, i) => i === idx ? { ...c, ...babyData } : c)
+    }
   }
-  const updatedChildren = [...existing, newChild]
 
   await supabase
     .from('beneficiaries')

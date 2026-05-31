@@ -165,7 +165,7 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
       )}
 
       {Array.isArray(beneficiary.children) && (beneficiary.children as unknown[]).length > 0 && (() => {
-        const kids = beneficiary.children as { name: string; id_number?: string; doc_type?: string; gender?: string; birth_date?: string; marital_status?: string }[]
+        const kids = beneficiary.children as { name: string; id_number?: string; doc_type?: string; gender?: string; birth_date?: string; marital_status?: string; birth_status?: 'pending' | 'approved' }[]
         const married = kids.filter(c => c.marital_status === 'married').length
         const single = kids.filter(c => c.marital_status === 'single').length
         const maritalLabel = (c: { gender?: string; marital_status?: string }) => {
@@ -213,11 +213,23 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
                     ) : <span className="text-slate-300">—</span>}
                   </td>
                   <td className="px-4 py-2.5">
-                    {maritalLabel(c) ? (
-                      <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${c.marital_status === 'married' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                        {maritalLabel(c)}
-                      </span>
-                    ) : <span className="text-slate-300">—</span>}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {c.birth_status === 'pending' && (
+                        <span className="inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                          ממתין לאישור לידה
+                        </span>
+                      )}
+                      {c.birth_status === 'approved' && (
+                        <span className="inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-800">
+                          לידה מאושרת
+                        </span>
+                      )}
+                      {maritalLabel(c) ? (
+                        <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${c.marital_status === 'married' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                          {maritalLabel(c)}
+                        </span>
+                      ) : (!c.birth_status && <span className="text-slate-300">—</span>)}
+                    </div>
                   </td>
                   <td className="px-4 py-2.5 text-slate-600">{c.birth_date ? formatDate(c.birth_date) : <span className="text-slate-300">—</span>}</td>
                   <td className="px-4 py-2.5 font-mono text-xs text-slate-600 ltr-num">{c.id_number || <span className="text-slate-300">—</span>}</td>
