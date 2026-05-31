@@ -4,7 +4,6 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
 import { MaternityAid } from '@/types'
 import Button from '@/components/ui/Button'
 import MaternityTable from './MaternityTable'
-import RecoveryHomeLinks from './RecoveryHomeLinks'
 
 async function getMaternityAids(): Promise<MaternityAid[]> {
   if (!isSupabaseConfigured()) return []
@@ -23,11 +22,6 @@ async function getMaternityAids(): Promise<MaternityAid[]> {
 export default async function MaternityPage() {
   const aids = await getMaternityAids()
 
-  // Unique recovery homes (only non-empty values)
-  const recoveryHomes = [...new Set(
-    aids.map(a => a.recovery_home).filter(Boolean) as string[]
-  )].sort()
-
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
@@ -42,10 +36,6 @@ export default async function MaternityPage() {
           </Button>
         </Link>
       </div>
-
-      {recoveryHomes.length > 0 && (
-        <RecoveryHomeLinks homes={recoveryHomes} />
-      )}
 
       {aids.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">

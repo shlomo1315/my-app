@@ -41,7 +41,7 @@ export default function RecoveryHomeLinks({ homes }: { homes: string[] }) {
   }
 
   const savePassword = async (home: string) => {
-    if (!pw || pw.length < 4) { setError('סיסמה חייבת להיות לפחות 4 תווים'); return }
+    if (!pw || pw.length < 10) { setError('סיסמה חייבת להיות לפחות 10 תווים'); return }
     setSaving(true)
     setError('')
     try {
@@ -142,7 +142,7 @@ export default function RecoveryHomeLinks({ homes }: { homes: string[] }) {
                     type={showPw ? 'text' : 'password'}
                     value={pw}
                     onChange={e => setPw(e.target.value)}
-                    placeholder="הכנס סיסמה (לפחות 4 תווים)"
+                    placeholder="הכנס סיסמה (לפחות 10 תווים)"
                     dir="ltr"
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 pl-9 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     onKeyDown={e => e.key === 'Enter' && savePassword(home)}
