@@ -4,7 +4,6 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
   Users,
-  Home,
   GitBranch,
   Baby,
   CreditCard,
@@ -14,6 +13,7 @@ import {
   Menu,
   X,
   Building2,
+  Trees,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -39,6 +39,7 @@ function LogoBadge() {
 const navItems = [
   { href: '/admin/dashboard', label: 'לוח בקרה', icon: LayoutDashboard },
   { href: '/admin/beneficiaries', label: 'נתמכים', icon: Users },
+  { href: '/admin/lineage', label: 'עץ הדורות', icon: Trees },
   { href: '/admin/maternity', label: 'יולדות', icon: Baby },
   { href: '/admin/loans', label: 'הלוואות', icon: CreditCard },
   { href: '/admin/distributions', label: 'חלוקות', icon: Gift },
