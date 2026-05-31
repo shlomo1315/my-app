@@ -1,9 +1,10 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowRight, Phone, MapPin, Calendar, Users, GitBranch, ChevronLeft, FileText } from 'lucide-react'
+import { ArrowRight, Phone, MapPin, Calendar, Users, GitBranch, ChevronLeft, FileText, User, Activity, Baby, CreditCard, Paperclip } from 'lucide-react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
 import { Beneficiary } from '@/types'
 import Card from '@/components/ui/Card'
+import Tabs from '@/components/ui/Tabs'
 import { format } from 'date-fns'
 import { he } from 'date-fns/locale'
 import BeneficiaryActions from './BeneficiaryActions'
@@ -14,11 +15,7 @@ async function getBeneficiary(id: string): Promise<Beneficiary | null> {
   if (!isSupabaseConfigured()) return null
   try {
     const supabase = await createClient()
-    const { data } = await supabase
-      .from('beneficiaries')
-      .select('*')
-      .eq('id', id)
-      .single()
+    const { data } = await supabase.from('beneficiaries').select('*').eq('id', id).single()
     return data
   } catch {
     return null
@@ -30,9 +27,7 @@ async function getLineagePath(nodeId?: string): Promise<string[]> {
   if (!nodeId || !isSupabaseConfigured()) return []
   try {
     const supabase = await createClient()
-    const { data } = await supabase
-      .from('lineage_nodes')
-      .select('id, name, parent_id')
+    const { data } = await supabase.from('lineage_nodes').select('id, name, parent_id')
     if (!data) return []
     const map = new Map(data.map(n => [n.id, n]))
     const path: string[] = []
@@ -49,23 +44,52 @@ async function getLineagePath(nodeId?: string): Promise<string[]> {
   }
 }
 
-// מפה של תיק יולדת → קישור לאישור הלידה, כדי להציג אייקון מסמך בטבלת הילדים
 async function getBirthCertificates(beneficiaryId: string): Promise<Record<string, string>> {
   if (!isSupabaseConfigured()) return {}
   try {
     const supabase = await createClient()
-    const { data } = await supabase
-      .from('maternity_aids')
-      .select('id, birth_certificate_url')
-      .eq('beneficiary_id', beneficiaryId)
+    const { data } = await supabase.from('maternity_aids').select('id, birth_certificate_url').eq('beneficiary_id', beneficiaryId)
     const map: Record<string, string> = {}
-    for (const r of data ?? []) {
-      if (r.birth_certificate_url) map[r.id] = r.birth_certificate_url
-    }
+    for (const r of data ?? []) if (r.birth_certificate_url) map[r.id] = r.birth_certificate_url
     return map
   } catch {
     return {}
   }
+}
+
+interface ActivityItem { kind: 'loan' | 'maternity'; id: string; title: string; date: string; status: string }
+
+// היסטוריית פעילות — כל מה שהמשפחה הגישה (הלוואות + לידות) עם תאריך וסטטוס
+async function getActivity(id: string): Promise<ActivityItem[]> {
+  if (!isSupabaseConfigured()) return []
+  try {
+    const supabase = await createClient()
+    const [loans, maternity] = await Promise.all([
+      supabase.from('loans').select('id, amount, purpose, status, created_at').eq('beneficiary_id', id),
+      supabase.from('maternity_aids').select('id, baby_name, status, created_at').eq('beneficiary_id', id),
+    ])
+    const items: ActivityItem[] = []
+    for (const l of loans.data ?? []) {
+      items.push({ kind: 'loan', id: l.id, title: `בקשת הלוואה${l.purpose ? ` — ${l.purpose}` : ''}${l.amount ? ` (₪${Math.round(Number(l.amount)).toLocaleString('he-IL')})` : ''}`, date: l.created_at, status: l.status })
+    }
+    for (const m of maternity.data ?? []) {
+      items.push({ kind: 'maternity', id: m.id, title: `פתיחת תיק לידה${m.baby_name ? ` — ${m.baby_name}` : ''}`, date: m.created_at, status: m.status })
+    }
+    items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    return items
+  } catch {
+    return []
+  }
+}
+
+const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
+  pending: { label: 'ממתין לאישור', cls: 'bg-amber-100 text-amber-800' },
+  active: { label: 'מאושר', cls: 'bg-green-100 text-green-800' },
+  approved: { label: 'מאושר', cls: 'bg-green-100 text-green-800' },
+  completed: { label: 'הושלם', cls: 'bg-slate-100 text-slate-700' },
+  rejected: { label: 'לא מאושר', cls: 'bg-red-100 text-red-800' },
+  cancelled: { label: 'לא מאושר', cls: 'bg-red-100 text-red-800' },
+  defaulted: { label: 'לא מאושר', cls: 'bg-red-100 text-red-800' },
 }
 
 export default async function BeneficiaryDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -73,6 +97,7 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
   const beneficiary = await getBeneficiary(id)
   const lineagePath = await getLineagePath(beneficiary?.lineage_node_id)
   const birthCerts = await getBirthCertificates(id)
+  const activity = await getActivity(id)
 
   if (!beneficiary && isSupabaseConfigured()) notFound()
 
@@ -80,9 +105,7 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
     return (
       <div className="flex flex-col gap-5 max-w-3xl">
         <div className="flex items-center gap-3">
-          <Link href="/admin/beneficiaries" className="text-slate-400 hover:text-slate-600">
-            <ArrowRight size={20} />
-          </Link>
+          <Link href="/admin/beneficiaries" className="text-slate-400 hover:text-slate-600"><ArrowRight size={20} /></Link>
           <h1 className="text-xl font-bold text-slate-900">פרטי נתמך</h1>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-400">
@@ -92,27 +115,21 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
     )
   }
 
-  const formatDate = (d?: string) =>
-    d ? format(new Date(d), 'dd/MM/yyyy', { locale: he }) : '—'
+  const formatDate = (d?: string) => d ? format(new Date(d), 'dd/MM/yyyy', { locale: he }) : '—'
+  const fullName = [beneficiary.family_name, beneficiary.full_name].filter(Boolean).join(' ')
+  const kids = Array.isArray(beneficiary.children)
+    ? (beneficiary.children as { name: string; id_number?: string; gender?: string; birth_date?: string; marital_status?: string; birth_status?: 'pending' | 'approved'; maternity_aid_id?: string }[])
+    : []
+  const maritalLabel = (c: { gender?: string; marital_status?: string }) => {
+    if (c.marital_status === 'married') return c.gender === 'female' ? 'נשואה' : 'נשוי'
+    if (c.marital_status === 'single') return c.gender === 'female' ? 'לא נשואה' : 'לא נשוי'
+    return null
+  }
+  const hasLineage = lineagePath.length > 0 || (Array.isArray(beneficiary.lineage_manual) && beneficiary.lineage_manual.length > 0)
 
-  return (
-    <div className="flex flex-col gap-5 max-w-3xl">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/admin/beneficiaries" className="text-slate-400 hover:text-slate-600">
-            <ArrowRight size={20} />
-          </Link>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">{[beneficiary.family_name, beneficiary.full_name].filter(Boolean).join(' ')}</h1>
-            <p className="text-sm text-slate-500 ltr-num">{beneficiary.id_number}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <StatusControl id={id} status={beneficiary.eligibility_status} />
-          <BeneficiaryActions id={id} name={[beneficiary.family_name, beneficiary.full_name].filter(Boolean).join(' ')} />
-        </div>
-      </div>
-
+  // ── Tab: פרטים אישיים ──
+  const personalTab = (
+    <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card>
           <h2 className="text-xs font-semibold text-slate-500 uppercase mb-3">פרטי הבעל</h2>
@@ -125,7 +142,6 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
             <DetailRow label="מספר ילדים" value={String(beneficiary.children_count)} />
           </div>
         </Card>
-
         <Card>
           <h2 className="text-xs font-semibold text-slate-500 uppercase mb-3">פרטי קשר</h2>
           <div className="space-y-2.5">
@@ -137,146 +153,22 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
           </div>
         </Card>
       </div>
-
       {beneficiary.spouse_name && (
         <Card>
           <h2 className="text-xs font-semibold text-slate-500 uppercase mb-3">פרטי האישה</h2>
           <div className="space-y-2.5">
             <DetailRow label="שם" value={beneficiary.spouse_name} />
-            {beneficiary.spouse_id_number && (
-              <DetailRow label={beneficiary.spouse_doc_type === 'passport' ? 'דרכון' : 'ת.ז.'} value={beneficiary.spouse_id_number} ltr />
-            )}
-            {beneficiary.spouse_birth_date && (
-              <DetailRow label="תאריך לידה" value={formatDate(beneficiary.spouse_birth_date)} />
-            )}
+            {beneficiary.spouse_id_number && <DetailRow label={beneficiary.spouse_doc_type === 'passport' ? 'דרכון' : 'ת.ז.'} value={beneficiary.spouse_id_number} ltr />}
+            {beneficiary.spouse_birth_date && <DetailRow label="תאריך לידה" value={formatDate(beneficiary.spouse_birth_date)} />}
           </div>
         </Card>
       )}
-
-      {/* ── Lineage / generations ── */}
-      {(lineagePath.length > 0 || (Array.isArray(beneficiary.lineage_manual) && beneficiary.lineage_manual.length > 0)) && (
-        <Card>
-          <div className="flex items-center gap-2 mb-3">
-            <GitBranch size={16} className="text-indigo-500" />
-            <h2 className="text-xs font-semibold text-slate-500 uppercase">שיוך שושלת</h2>
-          </div>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {lineagePath.map((name, i) => (
-              <span key={`t-${i}`} className="flex items-center gap-1.5">
-                {i > 0 && <ChevronLeft size={12} className="text-slate-300" />}
-                <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
-                  <span className="text-indigo-400 ml-1">דור {i + 1}</span>
-                  {name}
-                </span>
-              </span>
-            ))}
-            {Array.isArray(beneficiary.lineage_manual) &&
-              (beneficiary.lineage_manual as string[]).map((name, i) => (
-                <span key={`m-${i}`} className="flex items-center gap-1.5">
-                  <ChevronLeft size={12} className="text-slate-300" />
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
-                    <span className="text-amber-400 ml-1">דור {lineagePath.length + 1 + i}</span>
-                    {name}
-                  </span>
-                </span>
-              ))}
-          </div>
-        </Card>
-      )}
-
-      {Array.isArray(beneficiary.children) && (beneficiary.children as unknown[]).length > 0 && (() => {
-        const kids = beneficiary.children as { name: string; id_number?: string; doc_type?: string; gender?: string; birth_date?: string; marital_status?: string; birth_status?: 'pending' | 'approved'; maternity_aid_id?: string }[]
-        const married = kids.filter(c => c.marital_status === 'married').length
-        const single = kids.filter(c => c.marital_status === 'single').length
-        const maritalLabel = (c: { gender?: string; marital_status?: string }) => {
-          if (c.marital_status === 'married') return c.gender === 'female' ? 'נשואה' : 'נשוי'
-          if (c.marital_status === 'single') return c.gender === 'female' ? 'לא נשואה' : 'לא נשוי'
-          return null
-        }
-        return (
-        <Card padding="none">
-          <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <Users size={16} className="text-indigo-500" />
-              <h2 className="text-xs font-semibold text-slate-500 uppercase">ילדים ({kids.length})</h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
-                נשואים: {married}
-              </span>
-              <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                לא נשואים: {single}
-              </span>
-            </div>
-          </div>
-          <table className="w-full text-sm text-right">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-100 text-xs text-slate-500">
-                <th className="px-4 py-2">#</th>
-                <th className="px-4 py-2">שם</th>
-                <th className="px-4 py-2">מין</th>
-                <th className="px-4 py-2">סטטוס</th>
-                <th className="px-4 py-2">תאריך לידה</th>
-                <th className="px-4 py-2">מספר זהות</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {kids.map((c, i) => (
-                <tr key={i} className="hover:bg-slate-50">
-                  <td className="px-4 py-2.5 text-slate-400 tabular-nums">{i + 1}</td>
-                  <td className="px-4 py-2.5 font-medium text-slate-800">{c.name}</td>
-                  <td className="px-4 py-2.5">
-                    {c.gender ? (
-                      <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${c.gender === 'male' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}`}>
-                        {c.gender === 'male' ? 'בן' : 'בת'}
-                      </span>
-                    ) : <span className="text-slate-300">—</span>}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {c.birth_status === 'pending' && (
-                        <span className="inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                          ממתין לאישור לידה
-                        </span>
-                      )}
-                      {c.birth_status === 'approved' && (
-                        <span className="inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-800">
-                          לידה מאושרת
-                        </span>
-                      )}
-                      {c.maternity_aid_id && birthCerts[c.maternity_aid_id] && (
-                        <a href={birthCerts[c.maternity_aid_id]} target="_blank" rel="noopener noreferrer"
-                          title="צפייה באישור הלידה"
-                          className="inline-flex items-center justify-center w-6 h-6 rounded-full text-indigo-600 hover:bg-indigo-50 border border-indigo-200 transition-colors">
-                          <FileText size={13} />
-                        </a>
-                      )}
-                      {maritalLabel(c) ? (
-                        <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${c.marital_status === 'married' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                          {maritalLabel(c)}
-                        </span>
-                      ) : (!c.birth_status && <span className="text-slate-300">—</span>)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5 text-slate-600">{c.birth_date ? formatDate(c.birth_date) : <span className="text-slate-300">—</span>}</td>
-                  <td className="px-4 py-2.5 font-mono text-xs text-slate-600 ltr-num">{c.id_number || <span className="text-slate-300">—</span>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-        )
-      })()}
-
       {beneficiary.notes && (
         <Card>
           <h2 className="text-xs font-semibold text-slate-500 uppercase mb-2">הערות</h2>
           <p className="text-sm text-slate-700 whitespace-pre-wrap">{beneficiary.notes}</p>
         </Card>
       )}
-
-      <DocumentsManager beneficiaryId={id} />
-
       <div className="grid grid-cols-3 gap-3 text-center text-xs text-slate-400">
         <div className="bg-white rounded-xl border border-slate-200 p-3">
           <Calendar size={16} className="mx-auto mb-1 text-slate-300" />
@@ -296,15 +188,141 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
       </div>
     </div>
   )
+
+  // ── Tab: ילדים ──
+  const childrenTab = kids.length === 0 ? (
+    <Card><p className="text-center text-slate-400 text-sm py-6">לא נרשמו ילדים</p></Card>
+  ) : (
+    <Card padding="none">
+      <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-slate-100">
+        <div className="flex items-center gap-2">
+          <Users size={16} className="text-emerald-500" />
+          <h2 className="text-xs font-semibold text-slate-500 uppercase">ילדים ({kids.length})</h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">נשואים: {kids.filter(c => c.marital_status === 'married').length}</span>
+          <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">לא נשואים: {kids.filter(c => c.marital_status === 'single').length}</span>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-right">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-100 text-xs text-slate-500">
+              <th className="px-4 py-2">#</th><th className="px-4 py-2">שם</th><th className="px-4 py-2">מין</th><th className="px-4 py-2">סטטוס</th><th className="px-4 py-2">תאריך לידה</th><th className="px-4 py-2">מספר זהות</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {kids.map((c, i) => (
+              <tr key={i} className="hover:bg-slate-50">
+                <td className="px-4 py-2.5 text-slate-400 tabular-nums">{i + 1}</td>
+                <td className="px-4 py-2.5 font-medium text-slate-800">{c.name}</td>
+                <td className="px-4 py-2.5">
+                  {c.gender ? <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${c.gender === 'male' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}`}>{c.gender === 'male' ? 'בן' : 'בת'}</span> : <span className="text-slate-300">—</span>}
+                </td>
+                <td className="px-4 py-2.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {c.birth_status === 'pending' && <span className="inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">ממתין לאישור לידה</span>}
+                    {c.birth_status === 'approved' && <span className="inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-800">לידה מאושרת</span>}
+                    {c.maternity_aid_id && birthCerts[c.maternity_aid_id] && (
+                      <a href={birthCerts[c.maternity_aid_id]} target="_blank" rel="noopener noreferrer" title="צפייה באישור הלידה"
+                        className="inline-flex items-center justify-center w-6 h-6 rounded-full text-indigo-600 hover:bg-indigo-50 border border-indigo-200 transition-colors"><FileText size={13} /></a>
+                    )}
+                    {maritalLabel(c) ? <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${c.marital_status === 'married' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>{maritalLabel(c)}</span> : (!c.birth_status && <span className="text-slate-300">—</span>)}
+                  </div>
+                </td>
+                <td className="px-4 py-2.5 text-slate-600">{c.birth_date ? formatDate(c.birth_date) : <span className="text-slate-300">—</span>}</td>
+                <td className="px-4 py-2.5 font-mono text-xs text-slate-600 ltr-num">{c.id_number || <span className="text-slate-300">—</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  )
+
+  // ── Tab: עץ הדורות ──
+  const lineageTab = !hasLineage ? (
+    <Card><p className="text-center text-slate-400 text-sm py-6">לא הוגדר שיוך שושלת</p></Card>
+  ) : (
+    <Card>
+      <div className="flex items-center gap-2 mb-3">
+        <GitBranch size={16} className="text-violet-500" />
+        <h2 className="text-xs font-semibold text-slate-500 uppercase">שיוך שושלת — עץ הדורות</h2>
+      </div>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {lineagePath.map((name, i) => (
+          <span key={`t-${i}`} className="flex items-center gap-1.5">
+            {i > 0 && <ChevronLeft size={12} className="text-slate-300" />}
+            <span className="text-xs px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-100"><span className="text-violet-400 ml-1">דור {i + 1}</span>{name}</span>
+          </span>
+        ))}
+        {Array.isArray(beneficiary.lineage_manual) && (beneficiary.lineage_manual as string[]).map((name, i) => (
+          <span key={`m-${i}`} className="flex items-center gap-1.5">
+            <ChevronLeft size={12} className="text-slate-300" />
+            <span className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100"><span className="text-amber-400 ml-1">דור {lineagePath.length + 1 + i}</span>{name}</span>
+          </span>
+        ))}
+      </div>
+    </Card>
+  )
+
+  // ── Tab: היסטוריית פעילות ──
+  const activityTab = activity.length === 0 ? (
+    <Card><p className="text-center text-slate-400 text-sm py-6">אין פעילות רשומה למשפחה זו</p></Card>
+  ) : (
+    <Card padding="none">
+      <div className="divide-y divide-slate-100">
+        {activity.map(item => {
+          const badge = STATUS_BADGE[item.status] ?? { label: item.status, cls: 'bg-slate-100 text-slate-600' }
+          const Icon = item.kind === 'loan' ? CreditCard : Baby
+          const href = item.kind === 'loan' ? `/admin/loans/${item.id}` : `/admin/maternity/${item.id}`
+          const tone = item.kind === 'loan' ? 'bg-blue-50 text-blue-600' : 'bg-pink-50 text-pink-600'
+          return (
+            <Link key={`${item.kind}-${item.id}`} href={href} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
+              <span className={`flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${tone}`}><Icon size={17} /></span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-800 truncate">{item.title}</p>
+                <p className="text-xs text-slate-400 ltr-num">{formatDate(item.date)}</p>
+              </div>
+              <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${badge.cls}`}>{badge.label}</span>
+            </Link>
+          )
+        })}
+      </div>
+    </Card>
+  )
+
+  return (
+    <div className="flex flex-col gap-5 max-w-3xl">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link href="/admin/beneficiaries" className="text-slate-400 hover:text-slate-600"><ArrowRight size={20} /></Link>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">{fullName}</h1>
+            <p className="text-sm text-slate-500 ltr-num">{beneficiary.id_number}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <StatusControl id={id} status={beneficiary.eligibility_status} />
+          <BeneficiaryActions id={id} name={fullName} />
+        </div>
+      </div>
+
+      <Tabs tabs={[
+        { key: 'personal', label: 'פרטים אישיים', accent: 'indigo', icon: <User size={15} />, content: personalTab },
+        { key: 'children', label: `ילדים (${kids.length})`, accent: 'emerald', icon: <Users size={15} />, content: childrenTab },
+        { key: 'lineage', label: 'עץ הדורות', accent: 'violet', icon: <GitBranch size={15} />, content: lineageTab },
+        { key: 'documents', label: 'מסמכים מצורפים', accent: 'sky', icon: <Paperclip size={15} />, content: <DocumentsManager beneficiaryId={id} /> },
+        { key: 'activity', label: 'היסטוריית פעילות', accent: 'amber', icon: <Activity size={15} />, content: activityTab },
+      ]} />
+    </div>
+  )
 }
 
 function DetailRow({ label, value, ltr, icon }: { label: string; value: string; ltr?: boolean; icon?: React.ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-2">
-      <span className="text-xs text-slate-500 flex-shrink-0 flex items-center gap-1">
-        {icon}
-        {label}
-      </span>
+      <span className="text-xs text-slate-500 flex-shrink-0 flex items-center gap-1">{icon}{label}</span>
       <span className={`text-sm text-slate-800 ${ltr ? 'ltr-num text-left' : ''}`}>{value}</span>
     </div>
   )
