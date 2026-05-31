@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { GitBranch, Plus, Trash2, ChevronDown, ChevronLeft, Loader2, X, Check } from 'lucide-react'
+import { GitBranch, Plus, Trash2, ChevronDown, ChevronLeft, Loader2, X, Check, Pencil } from 'lucide-react'
 
 interface LineageNode {
   id: string
@@ -33,14 +33,29 @@ function NodeRow({
   depth,
   onAddChild,
   onDelete,
+  onEdit,
 }: {
   node: TreeNode
   depth: number
   onAddChild: (parentId: string, parentName: string) => void
   onDelete: (id: string, name: string) => void
+  onEdit: (id: string, name: string) => Promise<boolean>
 }) {
   const [expanded, setExpanded] = useState(depth < 2)
+  const [editing, setEditing] = useState(false)
+  const [editName, setEditName] = useState(node.name)
+  const [savingEdit, setSavingEdit] = useState(false)
   const hasChildren = node.children.length > 0
+
+  const startEdit = () => { setEditName(node.name); setEditing(true) }
+  const cancelEdit = () => { setEditing(false); setEditName(node.name) }
+  const saveEdit = async () => {
+    if (!editName.trim()) return
+    setSavingEdit(true)
+    const ok = await onEdit(node.id, editName.trim())
+    setSavingEdit(false)
+    if (ok) setEditing(false)
+  }
 
   return (
     <div>
@@ -59,26 +74,60 @@ function NodeRow({
           <div className={`w-2 h-2 rounded-full ${depth === 0 ? 'bg-indigo-500' : depth === 1 ? 'bg-blue-400' : 'bg-slate-300'}`} />
         </div>
 
-        <span className="flex-1 text-sm text-slate-800 font-medium">{node.name}</span>
-
-        <span className="text-xs text-slate-400 ml-2">דור {node.generation}</span>
-
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={() => onAddChild(node.id, node.name)}
-            className="p-1 rounded text-indigo-600 hover:bg-indigo-50"
-            title="הוסף צאצא"
-          >
-            <Plus size={14} />
-          </button>
-          <button
-            onClick={() => onDelete(node.id, node.name)}
-            className="p-1 rounded text-red-500 hover:bg-red-50"
-            title="מחק"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
+        {editing ? (
+          <div className="flex-1 flex items-center gap-2">
+            <input
+              type="text"
+              value={editName}
+              onChange={e => setEditName(e.target.value)}
+              autoFocus
+              onKeyDown={e => {
+                if (e.key === 'Enter') saveEdit()
+                if (e.key === 'Escape') cancelEdit()
+              }}
+              className="flex-1 rounded-lg border border-indigo-300 px-2 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+            <button
+              onClick={saveEdit}
+              disabled={savingEdit}
+              className="p-1 rounded text-green-600 hover:bg-green-50"
+              title="שמור"
+            >
+              {savingEdit ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+            </button>
+            <button onClick={cancelEdit} className="p-1 rounded text-slate-400 hover:bg-slate-100" title="ביטול">
+              <X size={14} />
+            </button>
+          </div>
+        ) : (
+          <>
+            <span className="flex-1 text-sm text-slate-800 font-medium">{node.name}</span>
+            <span className="text-xs text-slate-400 ml-2">דור {node.generation}</span>
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={startEdit}
+                className="p-1 rounded text-slate-500 hover:bg-slate-100"
+                title="ערוך שם"
+              >
+                <Pencil size={14} />
+              </button>
+              <button
+                onClick={() => onAddChild(node.id, node.name)}
+                className="p-1 rounded text-indigo-600 hover:bg-indigo-50"
+                title="הוסף צאצא"
+              >
+                <Plus size={14} />
+              </button>
+              <button
+                onClick={() => onDelete(node.id, node.name)}
+                className="p-1 rounded text-red-500 hover:bg-red-50"
+                title="מחק"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {expanded && hasChildren && (
@@ -90,6 +139,7 @@ function NodeRow({
               depth={depth + 1}
               onAddChild={onAddChild}
               onDelete={onDelete}
+              onEdit={onEdit}
             />
           ))}
         </div>
@@ -168,6 +218,23 @@ export default function LineageTreeManager() {
       await loadNodes()
     } catch {
       alert('שגיאה במחיקה')
+    }
+  }
+
+  const handleEdit = async (id: string, name: string): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/admin/lineage', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, name }),
+      })
+      const data = await res.json()
+      if (!res.ok) { alert(data.error || 'שגיאה בעריכה'); return false }
+      await loadNodes()
+      return true
+    } catch {
+      alert('שגיאת רשת')
+      return false
     }
   }
 
@@ -254,6 +321,7 @@ export default function LineageTreeManager() {
                 depth={0}
                 onAddChild={openAddChild}
                 onDelete={handleDelete}
+                onEdit={handleEdit}
               />
             ))}
           </div>
