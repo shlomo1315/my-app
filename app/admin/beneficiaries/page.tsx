@@ -20,8 +20,11 @@ async function getBeneficiaries(): Promise<Beneficiary[]> {
   }
 }
 
-export default async function BeneficiariesPage() {
-  const beneficiaries = await getBeneficiaries()
+export default async function BeneficiariesPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+  const [beneficiaries, params] = await Promise.all([getBeneficiaries(), searchParams])
+  const validFilters = ['all', 'pending', 'approved', 'rejected'] as const
+  type Filter = typeof validFilters[number]
+  const initialFilter: Filter = validFilters.includes(params.status as Filter) ? (params.status as Filter) : 'all'
 
   return (
     <div className="flex flex-col gap-5">
@@ -38,7 +41,7 @@ export default async function BeneficiariesPage() {
         </Link>
       </div>
 
-      <BeneficiariesTable data={beneficiaries} />
+      <BeneficiariesTable data={beneficiaries} initialFilter={initialFilter} />
     </div>
   )
 }

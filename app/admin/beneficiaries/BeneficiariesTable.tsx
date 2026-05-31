@@ -199,8 +199,8 @@ const CARD_DEFS: CardDef[] = [
   { key: 'rejected', label: 'לא מאושר', icon: X, base: 'border-red-200 hover:border-red-300', active: 'border-red-400 ring-2 ring-red-200 bg-red-50', iconCls: 'bg-red-100 text-red-700' },
 ]
 
-export default function BeneficiariesTable({ data }: { data: Beneficiary[] }) {
-  const [filter, setFilter] = useState<Filter>('all')
+export default function BeneficiariesTable({ data, initialFilter = 'all' }: { data: Beneficiary[], initialFilter?: Filter }) {
+  const [filter, setFilter] = useState<Filter>(initialFilter)
 
   const counts = useMemo(() => ({
     all: data.length,
