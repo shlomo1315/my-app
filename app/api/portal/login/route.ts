@@ -3,6 +3,16 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
+export function portalCookieName(home: string): string {
+  const safe = Buffer.from(home, 'utf-8')
+    .toString('base64')
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .slice(0, 32)
+  return `ph_${safe}`
+}
+
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -35,10 +45,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'סיסמה שגויה' }, { status: 401 })
   }
 
-  // Set session cookie (24h)
-  const cookieName = `portal_${Buffer.from(home).toString('base64url').slice(0, 20)}`
   const response = NextResponse.json({ ok: true })
-  response.cookies.set(cookieName, '1', {
+  response.cookies.set(portalCookieName(home), '1', {
     httpOnly: true,
     sameSite: 'lax',
     maxAge: 60 * 60 * 24,
