@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { EligibilityStatus, ELIGIBILITY_LABELS } from '@/types'
 
 // Statuses that mean "waiting for a decision"
-const PENDING_SET: EligibilityStatus[] = ['pending', 'review', 'pending_review']
+const PENDING_SET: EligibilityStatus[] = ['pending', 'review']
 
 const STYLES: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-200',
