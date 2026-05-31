@@ -1,4 +1,8 @@
 export type UserRole = 'admin' | 'secretary' | 'reviewer' | 'collections'
+
+export type SectionKey = 'beneficiaries' | 'lineage' | 'maternity' | 'loans' | 'distributions' | 'reports'
+export type PermissionLevel = 'none' | 'view' | 'edit' | 'add'
+export type UserPermissions = Partial<Record<SectionKey, PermissionLevel>>
 export type EligibilityStatus = 'pending' | 'approved' | 'rejected' | 'review'
 export type Gender = 'male' | 'female'
 export type LoanStatus = 'pending' | 'approved' | 'active' | 'completed' | 'rejected' | 'defaulted'
@@ -14,6 +18,7 @@ export interface Profile {
   role: UserRole
   phone?: string
   is_active: boolean
+  permissions?: UserPermissions
   created_at: string
 }
 
