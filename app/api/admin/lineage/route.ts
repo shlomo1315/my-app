@@ -3,6 +3,11 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse, type NextRequest } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
+const NO_STORE = { 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0' }
+
 async function getAdminClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -36,8 +41,8 @@ export async function GET() {
     .order('generation')
     .order('name')
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ nodes: data ?? [] })
+  if (error) return NextResponse.json({ error: error.message }, { status: 500, headers: NO_STORE })
+  return NextResponse.json({ nodes: data ?? [] }, { headers: NO_STORE })
 }
 
 export async function POST(request: NextRequest) {
@@ -77,15 +82,63 @@ export async function PATCH(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'לא מורשה' }, { status: 401 })
 
   const body = await request.json()
-  const { id, name, notes } = body
+  const { id, name, notes, parent_id } = body
 
   if (!id) return NextResponse.json({ error: 'חסר ID' }, { status: 400 })
-  if (!name?.trim()) return NextResponse.json({ error: 'שם חובה' }, { status: 400 })
 
   const admin = await getAdminClient()
+  const updates: Record<string, unknown> = {}
+  if (name !== undefined) {
+    if (!name.trim()) return NextResponse.json({ error: 'שם חובה' }, { status: 400 })
+    updates.name = name.trim()
+  }
+  if (notes !== undefined) updates.notes = notes?.trim() || null
+
+  if (parent_id !== undefined) {
+    const newParent: string | null = parent_id || null
+    if (newParent === id) {
+      return NextResponse.json({ error: 'לא ניתן להפוך צומת להורה של עצמו' }, { status: 400 })
+    }
+    const { data: all, error: allErr } = await admin
+      .from('lineage_nodes')
+      .select('id, parent_id, generation')
+    if (allErr) return NextResponse.json({ error: allErr.message }, { status: 500 })
+    const list = all ?? []
+    const childrenOf = new Map<string | null, string[]>()
+    for (const n of list) {
+      const arr = childrenOf.get(n.parent_id) ?? []
+      arr.push(n.id)
+      childrenOf.set(n.parent_id, arr)
+    }
+    const subtree = new Set<string>()
+    const stack = [id]
+    while (stack.length) {
+      const cur = stack.pop() as string
+      subtree.add(cur)
+      for (const c of childrenOf.get(cur) ?? []) stack.push(c)
+    }
+    if (newParent && subtree.has(newParent)) {
+      return NextResponse.json({ error: 'לא ניתן להעביר צומת אל תוך הצאצאים שלו' }, { status: 400 })
+    }
+    let baseGen = 1
+    if (newParent) {
+      const p = list.find((n) => n.id === newParent)
+      baseGen = (p?.generation ?? 0) + 1
+    }
+    updates.parent_id = newParent
+    updates.generation = baseGen
+    const queue: { id: string; gen: number }[] = []
+    for (const c of childrenOf.get(id) ?? []) queue.push({ id: c, gen: baseGen + 1 })
+    while (queue.length) {
+      const item = queue.shift() as { id: string; gen: number }
+      await admin.from('lineage_nodes').update({ generation: item.gen }).eq('id', item.id)
+      for (const c of childrenOf.get(item.id) ?? []) queue.push({ id: c, gen: item.gen + 1 })
+    }
+  }
+
   const { data, error } = await admin
     .from('lineage_nodes')
-    .update({ name: name.trim(), notes: notes?.trim() || null })
+    .update(updates)
     .eq('id', id)
     .select()
     .single()

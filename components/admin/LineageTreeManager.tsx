@@ -230,6 +230,7 @@ export default function LineageTreeManager() {
     setLoading(false)
   }, [])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadNodes() }, [loadNodes])
 
   const openAddChild = (parentId: string, parentName: string) => {
