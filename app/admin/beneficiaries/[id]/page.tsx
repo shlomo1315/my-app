@@ -117,6 +117,7 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
   }
 
   const formatDate = (d?: string) => d ? format(new Date(d), 'dd/MM/yyyy', { locale: he }) : '—'
+  const formatDateTime = (d?: string) => d ? format(new Date(d), 'dd/MM/yyyy HH:mm', { locale: he }) : '—'
   const fullName = [beneficiary.family_name, beneficiary.full_name].filter(Boolean).join(' ')
   const kids = Array.isArray(beneficiary.children)
     ? (beneficiary.children as { name: string; id_number?: string; gender?: string; birth_date?: string; marital_status?: string; birth_status?: 'pending' | 'approved'; maternity_aid_id?: string }[])
@@ -179,7 +180,7 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
         <div className="bg-white rounded-xl border border-slate-200 p-3">
           <Calendar size={16} className="mx-auto mb-1 text-slate-300" />
           <p className="font-medium text-slate-600">עדכון אחרון</p>
-          <p>{formatDate(beneficiary.updated_at)}</p>
+          <p className="ltr-num">{formatDateTime(beneficiary.updated_at)}</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-3">
           <div className={`w-2 h-2 rounded-full mx-auto mb-1 ${beneficiary.is_active ? 'bg-green-500' : 'bg-slate-300'}`} />
