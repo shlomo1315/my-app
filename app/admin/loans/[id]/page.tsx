@@ -73,6 +73,7 @@ export default async function LoanDetailPage({ params }: { params: Promise<{ id:
             <p><span className="text-slate-500">תשלום חודשי: </span><span className="ltr-num">{fmtCur(loan.monthly_payment)}</span></p>
             <p><span className="text-slate-500">מספר תשלומים: </span>{loan.installments}</p>
             <p><span className="text-slate-500">מטרה: </span>{loan.purpose ?? '—'}</p>
+            {loan.purpose_details && <p><span className="text-slate-500">פירוט מטרה: </span>{loan.purpose_details}</p>}
             <p><span className="text-slate-500">תאריך פתיחה: </span><span className="ltr-num">{fmtDate(loan.created_at)}</span></p>
           </div>
         </Card>
