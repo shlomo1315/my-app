@@ -40,13 +40,14 @@ export default async function EditBeneficiaryPage({ params }: { params: Promise<
         lineage_manual: Array.isArray(b.lineage_manual) ? (b.lineage_manual as string[]) : [],
         eligibility_status: b.eligibility_status ?? 'pending',
         children: Array.isArray(b.children)
-          ? (b.children as { name?: string; id_number?: string; doc_type?: string; gender?: string; birth_date?: string }[]).map(
+          ? (b.children as { name?: string; id_number?: string; doc_type?: string; gender?: string; birth_date?: string; marital_status?: string }[]).map(
               (c) => ({
                 name: c.name ?? '',
                 id_number: c.id_number ?? '',
                 doc_type: (c.doc_type === 'passport' ? 'passport' : 'id') as 'id' | 'passport',
                 gender: c.gender ?? '',
                 birth_date: c.birth_date ?? '',
+                marital_status: c.marital_status ?? '',
               })
             )
           : [],

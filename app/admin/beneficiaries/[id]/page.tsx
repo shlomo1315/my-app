@@ -164,11 +164,30 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
         </Card>
       )}
 
-      {Array.isArray(beneficiary.children) && (beneficiary.children as unknown[]).length > 0 && (
+      {Array.isArray(beneficiary.children) && (beneficiary.children as unknown[]).length > 0 && (() => {
+        const kids = beneficiary.children as { name: string; id_number?: string; doc_type?: string; gender?: string; birth_date?: string; marital_status?: string }[]
+        const married = kids.filter(c => c.marital_status === 'married').length
+        const single = kids.filter(c => c.marital_status === 'single').length
+        const maritalLabel = (c: { gender?: string; marital_status?: string }) => {
+          if (c.marital_status === 'married') return c.gender === 'female' ? 'נשואה' : 'נשוי'
+          if (c.marital_status === 'single') return c.gender === 'female' ? 'לא נשואה' : 'לא נשוי'
+          return null
+        }
+        return (
         <Card padding="none">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100">
-            <Users size={16} className="text-indigo-500" />
-            <h2 className="text-xs font-semibold text-slate-500 uppercase">ילדים ({(beneficiary.children as unknown[]).length})</h2>
+          <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <Users size={16} className="text-indigo-500" />
+              <h2 className="text-xs font-semibold text-slate-500 uppercase">ילדים ({kids.length})</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
+                נשואים: {married}
+              </span>
+              <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                לא נשואים: {single}
+              </span>
+            </div>
           </div>
           <table className="w-full text-sm text-right">
             <thead>
@@ -176,19 +195,27 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
                 <th className="px-4 py-2">#</th>
                 <th className="px-4 py-2">שם</th>
                 <th className="px-4 py-2">מין</th>
+                <th className="px-4 py-2">סטטוס</th>
                 <th className="px-4 py-2">תאריך לידה</th>
                 <th className="px-4 py-2">מספר זהות</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {(beneficiary.children as { name: string; id_number?: string; doc_type?: string; gender?: string; birth_date?: string }[]).map((c, i) => (
+              {kids.map((c, i) => (
                 <tr key={i} className="hover:bg-slate-50">
                   <td className="px-4 py-2.5 text-slate-400 tabular-nums">{i + 1}</td>
                   <td className="px-4 py-2.5 font-medium text-slate-800">{c.name}</td>
                   <td className="px-4 py-2.5">
                     {c.gender ? (
                       <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${c.gender === 'male' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}`}>
-                        {c.gender === 'male' ? 'זכר' : 'נקבה'}
+                        {c.gender === 'male' ? 'בן' : 'בת'}
+                      </span>
+                    ) : <span className="text-slate-300">—</span>}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    {maritalLabel(c) ? (
+                      <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${c.marital_status === 'married' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                        {maritalLabel(c)}
                       </span>
                     ) : <span className="text-slate-300">—</span>}
                   </td>
@@ -199,7 +226,8 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
             </tbody>
           </table>
         </Card>
-      )}
+        )
+      })()}
 
       {beneficiary.notes && (
         <Card>

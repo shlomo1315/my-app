@@ -24,10 +24,18 @@ interface ChildEntry {
   doc_type: 'id' | 'passport'
   gender: string
   birth_date: string
+  marital_status: string
 }
 
 function emptyChild(): ChildEntry {
-  return { name: '', id_number: '', doc_type: 'id', gender: '', birth_date: '' }
+  return { name: '', id_number: '', doc_type: 'id', gender: '', birth_date: '', marital_status: '' }
+}
+
+// סטטוס משפחתי לילד לפי מין: בן → נשוי/לא נשוי, בת → נשואה/לא נשואה
+function maritalOptionsFor(gender: string): { value: string; label: string }[] {
+  if (gender === 'male') return [{ value: 'married', label: 'נשוי' }, { value: 'single', label: 'לא נשוי' }]
+  if (gender === 'female') return [{ value: 'married', label: 'נשואה' }, { value: 'single', label: 'לא נשואה' }]
+  return []
 }
 
 interface LineageNode {
@@ -365,6 +373,7 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
       const ce: Partial<Record<keyof ChildEntry, string>> = {}
       if (!c.name.trim()) ce.name = 'שדה חובה'
       if (!c.gender) ce.gender = 'שדה חובה'
+      if (!c.marital_status) ce.marital_status = 'שדה חובה'
       if (!c.birth_date) ce.birth_date = 'שדה חובה'
       if (c.id_number.trim() && c.doc_type === 'id' && !validateIsraeliId(c.id_number)) {
         ce.id_number = 'תעודת זהות ישראלית לא תקינה (כולל ספרת ביקורת)'
@@ -411,6 +420,7 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
           doc_type: c.doc_type,
           gender: c.gender || null,
           birth_date: c.birth_date || null,
+          marital_status: c.marital_status || null,
         })),
         notes: form.notes || null,
         lineage_node_id: form.lineage_node_id || null,
@@ -582,13 +592,13 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
                   <Field label="מין" required error={childErrors[idx]?.gender}>
                     <select
                       value={child.gender}
-                      onChange={e => setChild(idx, 'gender', e.target.value)}
+                      onChange={e => { setChild(idx, 'gender', e.target.value); setChild(idx, 'marital_status', '') }}
                       className="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
                       required
                     >
                       <option value="">בחר...</option>
-                      <option value="male">זכר</option>
-                      <option value="female">נקבה</option>
+                      <option value="male">בן</option>
+                      <option value="female">בת</option>
                     </select>
                   </Field>
                   <Field label="תאריך לידה" required error={childErrors[idx]?.birth_date}>
@@ -599,6 +609,20 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
                       dir="ltr"
                       required
                     />
+                  </Field>
+                  <Field label="סטטוס" required error={childErrors[idx]?.marital_status}>
+                    <select
+                      value={child.marital_status}
+                      onChange={e => setChild(idx, 'marital_status', e.target.value)}
+                      disabled={!child.gender}
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full disabled:bg-slate-100 disabled:text-slate-400"
+                      required
+                    >
+                      <option value="">{child.gender ? 'בחר...' : 'בחר מין תחילה'}</option>
+                      {maritalOptionsFor(child.gender).map(o => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
                   </Field>
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-medium text-slate-600">
