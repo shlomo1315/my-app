@@ -1,5 +1,6 @@
 'use client'
 import { ReactNode, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ChevronUp, ChevronDown, Search } from 'lucide-react'
 
 export interface Column<T> {
@@ -19,6 +20,7 @@ interface DataTableProps<T> {
   emptyMessage?: string
   loading?: boolean
   actions?: (row: T) => ReactNode
+  rowHref?: (row: T) => string
 }
 
 export default function DataTable<T extends { id: string }>({
@@ -30,7 +32,9 @@ export default function DataTable<T extends { id: string }>({
   emptyMessage = 'אין נתונים להצגה',
   loading,
   actions,
+  rowHref,
 }: DataTableProps<T>) {
+  const router = useRouter()
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -134,7 +138,9 @@ export default function DataTable<T extends { id: string }>({
               </tr>
             ) : (
               paged.map((row) => (
-                <tr key={row.id} className="even:bg-slate-50/50 hover:bg-indigo-50/50 transition-colors">
+                <tr key={row.id}
+                  onClick={rowHref ? () => router.push(rowHref(row)) : undefined}
+                  className={`even:bg-slate-50/50 hover:bg-indigo-50/50 transition-colors ${rowHref ? 'cursor-pointer' : ''}`}>
                   {columns.map((col) => (
                     <td key={String(col.key)} className={`px-4 py-3.5 text-slate-700 align-middle whitespace-nowrap ${col.className ?? ''}`}>
                       {col.render
@@ -143,7 +149,7 @@ export default function DataTable<T extends { id: string }>({
                     </td>
                   ))}
                   {actions && (
-                    <td className="px-4 py-3.5 align-middle text-center">{actions(row)}</td>
+                    <td className="px-4 py-3.5 align-middle text-center" onClick={(e) => e.stopPropagation()}>{actions(row)}</td>
                   )}
                 </tr>
               ))

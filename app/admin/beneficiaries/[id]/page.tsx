@@ -5,6 +5,7 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
 import { Beneficiary } from '@/types'
 import Card from '@/components/ui/Card'
 import Tabs from '@/components/ui/Tabs'
+import BackButton from '@/components/ui/BackButton'
 import { format } from 'date-fns'
 import { he } from 'date-fns/locale'
 import BeneficiaryActions from './BeneficiaryActions'
@@ -296,7 +297,7 @@ export default async function BeneficiaryDetailPage({ params }: { params: Promis
     <div className="flex flex-col gap-5 max-w-3xl">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link href="/admin/beneficiaries" className="text-slate-400 hover:text-slate-600"><ArrowRight size={20} /></Link>
+          <BackButton fallback="/admin/beneficiaries" />
           <div>
             <h1 className="text-xl font-bold text-slate-900">{fullName}</h1>
             <p className="text-sm text-slate-500 ltr-num">{beneficiary.id_number}</p>
