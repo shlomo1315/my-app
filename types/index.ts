@@ -127,6 +127,7 @@ export interface Loan {
   installments: number
   monthly_payment: number
   purpose?: string
+  purpose_details?: string
   status: LoanStatus
   approved_by?: string
   start_date?: string
