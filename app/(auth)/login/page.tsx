@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [logoError, setLogoError] = useState(false)
 
   const isPlaceholder =
     process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://placeholder.supabase.co'
@@ -37,15 +38,27 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-100 via-cyan-50 to-blue-100 p-4">
       <div className="w-full max-w-sm">
-        <div className="flex flex-col items-center gap-3 mb-8">
-          <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-            <Building2 size={28} className="text-white" />
+        <div className="flex flex-col items-center gap-4 mb-8">
+          <div className="w-28 h-28 bg-white rounded-2xl flex items-center justify-center shadow-lg border border-sky-200 overflow-hidden p-2">
+            {logoError ? (
+              <Building2 size={40} className="text-sky-600" />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src="/logo.jpg"
+                alt="היכל החתם סופר"
+                className="w-full h-full object-contain"
+                onError={() => setLogoError(true)}
+              />
+            )}
           </div>
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-white">מערכת ניהול עמותה</h1>
-            <p className="text-slate-400 text-sm mt-1">כניסה למערכת</p>
+            <h1 className="text-xl font-bold text-slate-800 leading-snug">
+              ברוכים הבאים לתוכנת ניהול<br />היכל החתם סופר
+            </h1>
+            <p className="text-slate-500 text-sm mt-2">כניסה למערכת</p>
           </div>
         </div>
 
