@@ -1,79 +1,9 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Building2, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import Button from '@/components/ui/Button'
-
-const CONFETTI_COLORS = ['#6366f1', '#a855f7', '#ec4899', '#f59e0b', '#22c55e', '#3b82f6', '#ef4444', '#14b8a6', '#ffffff']
-
-function WelcomeScreen({ name }: { name: string }) {
-  const [logoError, setLogoError] = useState(false)
-  const [closing, setClosing] = useState(false)
-  const pieces = Array.from({ length: 90 })
-
-  useEffect(() => {
-    const t = setTimeout(() => setClosing(true), 2000)
-    return () => clearTimeout(t)
-  }, [])
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-indigo-700 via-violet-600 to-purple-700"
-      style={{ animation: closing ? 'welcome-out 0.5s ease-in forwards' : 'welcome-in 0.5s ease-out forwards' }}>
-
-      {/* Confetti */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        {pieces.map((_, i) => {
-          const left = Math.random() * 100
-          const delay = Math.random() * 1.2
-          const duration = 2.5 + Math.random() * 2
-          const size = 7 + Math.random() * 9
-          const color = CONFETTI_COLORS[i % CONFETTI_COLORS.length]
-          const rounded = Math.random() > 0.4
-          return (
-            <span key={i} style={{
-              position: 'absolute', left: `${left}%`, top: '-5%',
-              width: size, height: size * (rounded ? 1 : 1.8),
-              background: color, borderRadius: rounded ? '9999px' : '2px',
-              opacity: 0.85,
-              animation: `confetti-fall ${duration}s linear ${delay}s forwards`,
-            }} />
-          )
-        })}
-      </div>
-
-      {/* Decorative circles */}
-      <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-white/10" />
-      <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-white/5" />
-
-      {/* Card */}
-      <div className="relative text-center text-white px-8 max-w-sm w-full mx-4"
-        style={{ animation: 'pop-in 0.5s ease-out 0.15s both' }}>
-
-        {/* Logo */}
-        <div className="w-28 h-28 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl overflow-hidden p-2">
-          {logoError ? (
-            <Building2 size={44} className="text-indigo-600" />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src="/logo.jpg" alt="לוגו" className="w-full h-full object-contain"
-              onError={() => setLogoError(true)} />
-          )}
-        </div>
-
-        <h1 className="text-4xl font-bold mb-3 drop-shadow-lg">שלום, {name} 👋</h1>
-        <p className="text-indigo-100 text-lg mb-1">ברוכים הבאים לתוכנת הניהול</p>
-        <p className="text-white font-bold text-2xl drop-shadow">היכל החתם סופר</p>
-        <p className="text-indigo-200 text-sm mt-8">מיד תועבר לניהול האתר...</p>
-
-        {/* Progress bar */}
-        <div className="mt-4 h-1 w-48 bg-white/20 rounded-full overflow-hidden mx-auto">
-          <div className="h-full bg-white rounded-full" style={{ animation: 'shrink 2s linear forwards' }} />
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export default function LoginPage() {
   const router = useRouter()
@@ -85,7 +15,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [logoError, setLogoError] = useState(false)
-  const [welcomeName, setWelcomeName] = useState<string | null>(null)
 
   const isPlaceholder =
     process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://placeholder.supabase.co'
@@ -93,8 +22,8 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (isPlaceholder) {
-      setWelcomeName('אורח')
-      setTimeout(() => { router.push('/admin/dashboard') }, 3000)
+      sessionStorage.setItem('welcomeUser', 'אורח')
+      router.push('/admin/dashboard')
       return
     }
     setLoading(true)
@@ -105,7 +34,6 @@ export default function LoginPage() {
       setLoading(false)
       return
     }
-    // שלוף את שם המשתמש מהפרופיל
     let name = email.split('@')[0]
     if (data.user) {
       const { data: profile } = await supabase
@@ -115,17 +43,13 @@ export default function LoginPage() {
         .maybeSingle()
       if (profile?.full_name) name = profile.full_name
     }
-    setLoading(false)
-    setWelcomeName(name)
-    setTimeout(() => {
-      router.push('/admin/dashboard')
-      router.refresh()
-    }, 3000)
+    sessionStorage.setItem('welcomeUser', name)
+    router.push('/admin/dashboard')
+    router.refresh()
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-100 via-cyan-50 to-blue-100 p-4">
-      {welcomeName && <WelcomeScreen name={welcomeName} />}
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center gap-4 mb-8">
           <div className="w-28 h-28 bg-white rounded-2xl flex items-center justify-center shadow-lg border border-sky-200 overflow-hidden p-2">

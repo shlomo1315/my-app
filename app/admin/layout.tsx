@@ -1,5 +1,6 @@
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
+import WelcomeModal from '@/components/ui/WelcomeModal'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
 import { Profile } from '@/types'
 
@@ -29,6 +30,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
+      <WelcomeModal />
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header user={profile} />
