@@ -1,9 +1,9 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Button from '@/components/ui/Button'
-import { GitBranch, ChevronLeft, Loader2, Heart, User, Phone, MapPin, Users, FileText, Plus, X } from 'lucide-react'
+import { GitBranch, ChevronLeft, Loader2, Heart, User, Phone, MapPin, Users, FileText, Plus, X, CheckCircle2 } from 'lucide-react'
 import { validateIsraeliId } from '@/lib/validation'
 
 const MARITAL_OPTIONS = ['נשואים', 'גרוש', 'גרושה', 'אלמן', 'אלמנה']
@@ -11,9 +11,9 @@ const WIFE_PRIMARY_STATUSES = ['גרושה', 'אלמנה']
 const MARRIED_STATUS = 'נשואים'
 
 const STATUS_OPTIONS = [
-  { value: 'pending', label: 'ממתין לאישור' },
-  { value: 'approved', label: 'מאושר' },
-  { value: 'rejected', label: 'לא מאושר' },
+  { value: 'pending', label: 'ממתין לאישור', sel: 'bg-amber-500 text-white border-amber-500', unsel: 'border-amber-300 text-amber-700 hover:bg-amber-50' },
+  { value: 'approved', label: 'מאושר', sel: 'bg-green-600 text-white border-green-600', unsel: 'border-green-300 text-green-700 hover:bg-green-50' },
+  { value: 'rejected', label: 'לא מאושר', sel: 'bg-red-600 text-white border-red-600', unsel: 'border-red-300 text-red-700 hover:bg-red-50' },
 ]
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -25,6 +25,9 @@ interface ChildEntry {
   gender: string
   birth_date: string
   marital_status: string
+  // נשמרים עבור ילדים שנכנסו דרך תיק יולדת — לא לאבד אותם בעריכה
+  birth_status?: 'pending' | 'approved'
+  maternity_aid_id?: string
 }
 
 function emptyChild(): ChildEntry {
@@ -74,7 +77,38 @@ function LineageCascade({
     setLoading(false)
   }, [])
 
-  useEffect(() => { loadLevel(null, 0) }, [loadLevel])
+  // טעינה ראשונית: אם קיים שיוך שמור (עריכה) — שחזר את כל מסלול הדורות שנבחר;
+  // אחרת טען את דור 1 בלבד (רישום חדש).
+  const didInit = useRef(false)
+  useEffect(() => {
+    if (didInit.current) return
+    didInit.current = true
+    if (initialNodeId) {
+      (async () => {
+        setLoading(true)
+        try {
+          const res = await fetch(`/api/lineage?node_id=${initialNodeId}`)
+          const data = await res.json()
+          const path: { selectedId: string; nodes: LineageNode[] }[] = data.path ?? []
+          if (path.length > 0) {
+            const rebuilt = path.map(lvl => ({
+              nodes: lvl.nodes,
+              selected: lvl.selectedId,
+              selectedName: lvl.nodes.find(n => n.id === lvl.selectedId)?.name ?? '',
+            }))
+            setLevels(rebuilt)
+            onSelect(initialNodeId, rebuilt.map(l => l.selectedName))
+            setLoading(false)
+            return
+          }
+        } catch { /* ignore */ }
+        loadLevel(null, 0)
+      })()
+    } else {
+      loadLevel(null, 0)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleSelect = async (levelIdx: number, node: LineageNode) => {
     const currentPath = levels.slice(0, levelIdx).map(l => l.selectedName).concat(node.name)
@@ -316,6 +350,8 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
   )
   const [childErrors, setChildErrors] = useState<Partial<Record<keyof ChildEntry, string>>[]>([])
   const [checkingId, setCheckingId] = useState(false)
+  // חלונית הצלחה לאחר שמירה (נסגרת אוטומטית אחרי 3 שניות)
+  const [savedInfo, setSavedInfo] = useState<{ name: string; details: string[] } | null>(null)
 
   // בדיקת כפילות תעודת זהות בזמן אמת (כשעוזבים את השדה)
   const checkDuplicateId = useCallback(async () => {
@@ -465,6 +501,9 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
           gender: c.gender || null,
           birth_date: c.birth_date || null,
           marital_status: c.marital_status || null,
+          // שמירת סימוני תיק היולדת אם קיימים (כדי לא לאבד אותם בעריכה)
+          ...(c.birth_status ? { birth_status: c.birth_status } : {}),
+          ...(c.maternity_aid_id ? { maternity_aid_id: c.maternity_aid_id } : {}),
         })),
         notes: form.notes || null,
         lineage_node_id: form.lineage_node_id || null,
@@ -472,10 +511,18 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
         eligibility_status: form.eligibility_status || 'pending',
       }
 
+      const familyName = [payload.family_name, payload.spouse_name || payload.full_name].filter(Boolean).join(' ')
+      const details = [
+        `ת.ז. ${payload.id_number}`,
+        payload.phone ? `טלפון ${payload.phone}` : '',
+        payload.city ? `עיר ${payload.city}` : '',
+        `${children.length} ילדים`,
+      ].filter(Boolean)
+
+      let targetId = beneficiaryId
       if (isEdit) {
         const { error } = await supabase.from('beneficiaries').update(payload).eq('id', beneficiaryId)
         if (error) throw error
-        router.push(`/admin/beneficiaries/${beneficiaryId}`)
       } else {
         const { data: inserted, error } = await supabase
           .from('beneficiaries')
@@ -483,18 +530,47 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
           .select()
           .single()
         if (error) throw error
-        router.push(`/admin/beneficiaries/${inserted.id}`)
+        targetId = inserted.id
       }
+
+      // חלונית "נשמר בהצלחה" — מציגה את הפרטים ל-3 שניות ואז נסגרת ומנווטת
+      setSavedInfo({ name: familyName, details })
+      setTimeout(() => {
+        router.push(`/admin/beneficiaries/${targetId}`)
+        router.refresh()
+      }, 3000)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
       alert(`שגיאה בשמירה: ${msg}`)
-    } finally {
       setSaving(false)
     }
   }
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
+
+      {/* ── Success modal (auto-closes after 3s) ── */}
+      {savedInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-7 w-full max-w-sm mx-4 text-center">
+            <div className="w-14 h-14 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 size={30} />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900">השינויים נשמרו בהצלחה</h3>
+            <p className="text-sm text-slate-500 mt-1">למשפחת {savedInfo.name}</p>
+            {savedInfo.details.length > 0 && (
+              <div className="mt-4 flex flex-wrap justify-center gap-1.5">
+                {savedInfo.details.map((d, i) => (
+                  <span key={i} className="text-xs text-slate-600 bg-slate-100 rounded-full px-2.5 py-1">{d}</span>
+                ))}
+              </div>
+            )}
+            <div className="mt-5 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-full bg-green-500 animate-[shrink_3s_linear_forwards]" />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Registration status ── */}
       <Section title="סטטוס רישום" icon={FileText}>
@@ -505,9 +581,7 @@ export default function BeneficiaryForm({ defaultValues, beneficiaryId }: Props)
               type="button"
               onClick={() => setForm(f => ({ ...f, eligibility_status: opt.value }))}
               className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                form.eligibility_status === opt.value
-                  ? 'bg-indigo-600 text-white border-indigo-600'
-                  : 'bg-white text-slate-700 border-slate-300 hover:border-indigo-400 hover:bg-indigo-50'
+                form.eligibility_status === opt.value ? opt.sel : `bg-white ${opt.unsel}`
               }`}
             >
               {opt.label}

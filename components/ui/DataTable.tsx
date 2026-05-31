@@ -93,14 +93,14 @@ export default function DataTable<T extends { id: string }>({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100">
         <table className="w-full text-sm text-right border-collapse">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
+            <tr className="bg-gradient-to-b from-slate-50 to-slate-100/60 border-b border-slate-200">
               {columns.map((col) => (
                 <th
                   key={String(col.key)}
-                  className={`px-4 py-3 text-xs font-semibold text-slate-500 whitespace-nowrap ${col.className ?? ''} ${col.sortable ? 'cursor-pointer hover:text-slate-700 select-none' : ''}`}
+                  className={`px-4 py-3.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap ${col.className ?? ''} ${col.sortable ? 'cursor-pointer hover:text-indigo-600 select-none transition-colors' : ''}`}
                   onClick={() => col.sortable && toggleSort(String(col.key))}
                 >
                   <div className="flex items-center gap-1">
@@ -111,7 +111,7 @@ export default function DataTable<T extends { id: string }>({
                   </div>
                 </th>
               ))}
-              {actions && <th className="px-4 py-3 text-xs font-semibold text-slate-500 whitespace-nowrap text-center">פעולות</th>}
+              {actions && <th className="px-4 py-3.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 whitespace-nowrap text-center">פעולות</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -134,7 +134,7 @@ export default function DataTable<T extends { id: string }>({
               </tr>
             ) : (
               paged.map((row) => (
-                <tr key={row.id} className="hover:bg-indigo-50/40 transition-colors">
+                <tr key={row.id} className="even:bg-slate-50/50 hover:bg-indigo-50/50 transition-colors">
                   {columns.map((col) => (
                     <td key={String(col.key)} className={`px-4 py-3.5 text-slate-700 align-middle whitespace-nowrap ${col.className ?? ''}`}>
                       {col.render
