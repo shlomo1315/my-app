@@ -115,7 +115,7 @@ export default function NewLoanPage() {
   const validate = (): Record<string, string> => {
     const e: Record<string, string> = {}
     if (!purpose) e.purpose = 'יש לבחור מטרת הלוואה'
-    if (purpose === 'אחר' && !purposeDetails.trim()) e.purposeDetails = 'יש לפרט את מטרת ההלוואה'
+    if (needsDetails && !purposeDetails.trim()) e.purposeDetails = 'יש לפרט את מטרת ההלוואה'
     if (!amountNum) e.amount = 'יש להזין סכום'
     else if (amountNum > MAX_AMOUNT) e.amount = `הסכום המרבי הוא ${fmtCur(MAX_AMOUNT)}`
     if (!instNum) e.installments = 'יש להזין מספר תשלומים'
@@ -261,7 +261,7 @@ export default function NewLoanPage() {
             {needsDetails && (
               <div className="flex flex-col gap-2 mt-1">
                 <label className="text-xs font-medium text-slate-600">
-                  פירוט מטרת ההלוואה {purpose === 'אחר' && <span className="text-red-500">*</span>}
+                  פירוט מטרת ההלוואה <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={purposeDetails}
