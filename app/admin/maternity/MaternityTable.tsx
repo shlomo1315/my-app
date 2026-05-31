@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Clock, Check, X, Baby, Eye, ChevronDown, Loader2, Search } from 'lucide-react'
+import { Clock, Check, X, Baby, Eye, ChevronDown, Loader2, Search, FileText } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { format } from 'date-fns'
 import { he } from 'date-fns/locale'
@@ -243,14 +243,14 @@ export default function MaternityTable({ data }: { data: MaternityAid[] }) {
           <table className="w-full text-sm text-right">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
-                {['שם היולדת', 'ת.ז. האישה', 'שם התינוק', 'ת.ז. התינוק', 'תאריך לידה', 'בית החלמה', 'כרטיס נדרים', 'סטטוס', 'פעולות'].map(h => (
+                {['שם היולדת', 'ת.ז. האישה', 'שם התינוק', 'ת.ז. התינוק', 'תאריך לידה', 'בית החלמה', 'כרטיס נדרים', 'אישור לידה', 'סטטוס', 'פעולות'].map(h => (
                   <th key={h} className="px-4 py-3 text-xs font-semibold text-slate-500 whitespace-nowrap align-middle">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-400">לא נמצאו תיקים בסינון זה</td></tr>
+                <tr><td colSpan={10} className="px-4 py-12 text-center text-slate-400">לא נמצאו תיקים בסינון זה</td></tr>
               ) : filtered.map(aid => {
                 const m = aid.beneficiary as MotherRef | undefined
                 return (
@@ -262,6 +262,17 @@ export default function MaternityTable({ data }: { data: MaternityAid[] }) {
                     <td className="px-4 py-3 align-middle text-slate-600"><span className="ltr-num">{formatDate(aid.birth_date)}</span></td>
                     <td className="px-4 py-3 align-middle text-slate-600">{aid.recovery_home ?? '—'}</td>
                     <td className="px-4 py-3 align-middle text-xs font-mono text-slate-600"><span className="ltr-num">{aid.card_number ?? '—'}</span></td>
+                    <td className="px-4 py-3 align-middle">
+                      {aid.birth_certificate_url ? (
+                        <a href={aid.birth_certificate_url} target="_blank" rel="noopener noreferrer"
+                          onClick={e => e.stopPropagation()}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 px-2.5 py-1.5 rounded-lg border border-indigo-200 hover:bg-indigo-50 transition-colors">
+                          <FileText size={14} /> צפייה
+                        </a>
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 align-middle"><StatusControl aid={aid} /></td>
                     <td className="px-4 py-3 align-middle">
                       <Link href={`/admin/maternity/${aid.id}`}
