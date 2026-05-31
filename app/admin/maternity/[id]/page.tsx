@@ -6,6 +6,7 @@ import { MaternityAid } from '@/types'
 import Card from '@/components/ui/Card'
 import { StatusControl } from '../MaternityTable'
 import MaternityActions from './MaternityActions'
+import BackButton from '@/components/ui/BackButton'
 import { format } from 'date-fns'
 import { he } from 'date-fns/locale'
 
@@ -67,7 +68,7 @@ export default async function MaternityDetailPage({ params }: { params: Promise<
     <div className="flex flex-col gap-5 max-w-2xl">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link href="/admin/maternity" className="text-slate-400 hover:text-slate-600"><ArrowRight size={20} /></Link>
+          <BackButton fallback="/admin/maternity" />
           <div>
             <h1 className="text-xl font-bold text-slate-900">{motherName}</h1>
             {motherId && <p className="text-sm text-slate-500 ltr-num">ת.ז. {motherId}</p>}
@@ -94,6 +95,7 @@ export default async function MaternityDetailPage({ params }: { params: Promise<
               </span>
             </p>
           )}
+          <p className="text-sm"><span className="text-slate-500">תאריך לידה: </span><span className="ltr-num font-medium text-slate-800">{fmtDate(aid.birth_date)}</span></p>
           {aid.baby_id_number && (
             <p className="text-sm"><span className="text-slate-500">{aid.baby_id_type === 'passport' ? 'דרכון' : 'ת.ז.'}: </span><span className="ltr-num font-mono text-xs">{aid.baby_id_number}</span></p>
           )}

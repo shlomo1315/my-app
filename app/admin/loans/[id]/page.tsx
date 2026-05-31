@@ -5,6 +5,7 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
 import { Loan } from '@/types'
 import Card from '@/components/ui/Card'
 import { LoanStatusControl, DeleteLoanButton } from '../LoanControls'
+import BackButton from '@/components/ui/BackButton'
 import { format } from 'date-fns'
 import { he } from 'date-fns/locale'
 
@@ -45,13 +46,14 @@ export default async function LoanDetailPage({ params }: { params: Promise<{ id:
   }
 
   const b = loan.beneficiary as { full_name?: string; family_name?: string; spouse_name?: string; id_number?: string; phone?: string } | undefined
-  const borrower = b ? ([b.family_name, b.spouse_name || b.full_name].filter(Boolean).join(' ') || b.full_name) : undefined
+  // הלווה = הבעל (שם משפחה + שם פרטי, ת.ז. הבעל)
+  const borrower = b ? ([b.family_name, b.full_name].filter(Boolean).join(' ') || b.full_name) : undefined
 
   return (
     <div className="flex flex-col gap-5 max-w-2xl">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link href="/admin/loans" className="text-slate-400 hover:text-slate-600"><ArrowRight size={20} /></Link>
+          <BackButton fallback="/admin/loans" />
           <div>
             <h1 className="text-xl font-bold text-slate-900">{borrower ?? 'פרטי הלוואה'}</h1>
             <p className="text-sm text-slate-500 ltr-num">{b?.id_number}</p>

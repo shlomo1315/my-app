@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowRight, Search, Loader2, Check, AlertTriangle, Upload, X, Baby } from 'lucide-react'
+import { ArrowRight, Search, Loader2, Check, AlertTriangle, Upload, X, Baby, ExternalLink, GitBranch, ChevronLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { validateIsraeliId } from '@/lib/validation'
 import { format, addWeeks } from 'date-fns'
@@ -42,10 +42,28 @@ export default function NewMaternityPage() {
   const [saveError, setSaveError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [savedInfo, setSavedInfo] = useState<{ name: string; details: string[] } | null>(null)
+  const [lineagePath, setLineagePath] = useState<string[]>([])
+
+  // שליפת שרשרת הדורות (עץ הדורות) של המשפחה שנמצאה
+  const loadLineage = async (lineageNodeId?: string, manual?: unknown) => {
+    const names: string[] = []
+    if (lineageNodeId) {
+      try {
+        const res = await fetch(`/api/lineage?node_id=${lineageNodeId}`)
+        const j = await res.json()
+        for (const lvl of (j.path ?? [])) {
+          const sel = (lvl.nodes ?? []).find((n: { id: string }) => n.id === lvl.selectedId)
+          if (sel) names.push(sel.name)
+        }
+      } catch { /* ignore */ }
+    }
+    if (Array.isArray(manual)) names.push(...(manual as string[]).filter(Boolean))
+    setLineagePath(names)
+  }
 
   const lookupMother = async () => {
     if (!idInput.trim()) return
-    setLooking(true); setLookupError(''); setMother(null)
+    setLooking(true); setLookupError(''); setMother(null); setLineagePath([])
     try {
       const raw = idInput.trim()
       const digits = raw.replace(/\D/g, '')
@@ -67,6 +85,7 @@ export default function NewMaternityPage() {
         setLookupError(`נמצאה רשומה אך הסטטוס המשפחתי הוא "${data.marital_status || 'לא ידוע'}". ניתן לפתוח תיק יולדת רק עבור סטטוס "נשואים".`)
       } else {
         setMother(data)
+        loadLineage(data.lineage_node_id, (data as { lineage_manual?: unknown }).lineage_manual)
       }
     } catch {
       setLookupError('שגיאת רשת — נסה שוב')
@@ -120,12 +139,13 @@ export default function NewMaternityPage() {
     try {
       let certUrl: string | undefined
       if (certFile) {
-        const path = `maternity/${mother.id}/${Date.now()}_${certFile.name}`
-        const { error: upErr } = await supabase.storage.from('documents').upload(path, certFile)
-        if (!upErr) {
-          const { data: pub } = supabase.storage.from('documents').getPublicUrl(path)
-          certUrl = pub.publicUrl
-        }
+        // ניקוי שם הקובץ (עברית/רווחים שוברים מפתח אחסון)
+        const safeName = certFile.name.replace(/[^\w.\-]+/g, '_')
+        const path = `maternity/${mother.id}/${Date.now()}_${safeName}`
+        const { error: upErr } = await supabase.storage.from('documents').upload(path, certFile, { upsert: true })
+        if (upErr) throw new Error(`שגיאה בהעלאת אישור הלידה: ${upErr.message}`)
+        const { data: pub } = supabase.storage.from('documents').getPublicUrl(path)
+        certUrl = pub.publicUrl
       }
 
       const sixEnd = addWeeks(new Date(babyBirthDate), 6).toISOString().split('T')[0]
@@ -190,7 +210,7 @@ export default function NewMaternityPage() {
       })
       setTimeout(() => router.push(`/admin/maternity/${inserted.id}`), 3000)
     } catch (e) {
-      setSaveError('שגיאה בשמירה — נסה שוב')
+      setSaveError(e instanceof Error ? e.message : 'שגיאה בשמירה — נסה שוב')
       console.error(e)
     } finally {
       setSaving(false)
@@ -264,10 +284,31 @@ export default function NewMaternityPage() {
                       בן זוג: {[mother.family_name, mother.full_name].filter(Boolean).join(' ')}
                     </span>
                   )}
+                  <Link href={`/admin/beneficiaries/${mother.id}`}
+                    className="text-xs text-indigo-600 hover:text-indigo-700 underline inline-flex items-center gap-1 mt-1 w-fit">
+                    <ExternalLink size={11} /> פתיחת כרטסת המשפחה
+                  </Link>
                 </div>
               </div>
-              <button onClick={() => { setMother(null); setIdInput('') }} className="text-slate-400 hover:text-slate-600"><X size={15} /></button>
+              <button onClick={() => { setMother(null); setIdInput(''); setLineagePath([]) }} className="text-slate-400 hover:text-slate-600"><X size={15} /></button>
             </div>
+
+            {/* שרשרת הדורות (עץ הדורות) של המשפחה */}
+            {lineagePath.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 text-xs border-t border-green-200/70 pt-2 mt-1">
+                <span className="inline-flex items-center gap-1 text-green-700/80 font-medium">
+                  <GitBranch size={12} /> שרשרת הדורות:
+                </span>
+                {lineagePath.map((name, i) => (
+                  <span key={i} className="inline-flex items-center gap-1.5">
+                    <span className="bg-white border border-green-200 rounded-full px-2 py-0.5 text-green-800">
+                      <span className="text-green-500">דור {i + 1}</span> {name}
+                    </span>
+                    {i < lineagePath.length - 1 && <ChevronLeft size={12} className="text-green-400" />}
+                  </span>
+                ))}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-green-700 mt-1">
               <span>ת.ז. האישה: <span className="ltr-num font-mono">{mother.spouse_id_number ?? mother.id_number}</span></span>
               <span>ת.ז. הבעל: <span className="ltr-num font-mono">{mother.id_number}</span></span>

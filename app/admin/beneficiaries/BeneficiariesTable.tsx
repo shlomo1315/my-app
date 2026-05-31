@@ -239,6 +239,7 @@ export default function BeneficiariesTable({ data, initialFilter = 'all' }: { da
       <DataTable
         data={filtered}
         columns={columns}
+        rowHref={(row) => `/admin/beneficiaries/${row.id}`}
         searchable
         searchPlaceholder="חיפוש חופשי בכל השדות..."
         searchKeys={['full_name', 'family_name', 'id_number', 'phone', 'phone2', 'email', 'address', 'city', 'marital_status', 'spouse_name', 'spouse_id_number', 'nedarim_id', 'notes']}
