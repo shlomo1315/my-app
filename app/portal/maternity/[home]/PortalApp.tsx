@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import {
-  Building2, Baby, CalendarDays, Clock, Search, Eye, EyeOff,
+  Building2, Baby, CalendarDays, Search, Eye, EyeOff,
   AlertCircle, Lock, X, User, Phone, MapPin, ChevronLeft
 } from 'lucide-react'
 import { format, differenceInDays, addDays } from 'date-fns'
@@ -139,7 +139,6 @@ function LoginForm({ home, onSuccess }: { home: string; onSuccess: () => void })
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
 function DetailModal({ aid, onClose }: { aid: Aid; onClose: () => void }) {
   const m = aid.beneficiary
-  const days = daysLeft(aid)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" onClick={onClose}>
@@ -162,14 +161,7 @@ function DetailModal({ aid, onClose }: { aid: Aid; onClose: () => void }) {
         </div>
 
         <div className="p-5 space-y-4">
-          {/* Days badge */}
-          <div className={`inline-flex items-center gap-2 text-sm font-semibold rounded-full px-4 py-1.5 ${
-            days <= 7 ? 'bg-red-100 text-red-700' : days <= 14 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
-          }`}>
-            <Clock size={14} /> {days} ימים שנותרו (עד {fmtDate(endDate(aid).toISOString())})
-          </div>
-
-          {/* Baby info */}
+            {/* Baby info */}
           <div className="bg-indigo-50 rounded-xl p-4 space-y-2">
             <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wide mb-2">פרטי התינוק</p>
             <Row icon={<Baby size={14} />} label="שם התינוק" value={aid.baby_name ?? '—'} />
@@ -266,20 +258,6 @@ function DataView({ home, aids }: { home: string; aids: Aid[] }) {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-5 space-y-4">
-        {/* Stats row */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: 'סה״כ יולדות', value: aids.length, cls: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
-            { label: 'ממתינות לידה עד 7 ימים', value: aids.filter(a => daysLeft(a) <= 7).length, cls: 'text-red-700 bg-red-50 border-red-200' },
-            { label: 'ימי ממוצע שנותרו', value: aids.length ? Math.round(aids.reduce((s, a) => s + daysLeft(a), 0) / aids.length) : 0, cls: 'text-green-700 bg-green-50 border-green-200' },
-          ].map(s => (
-            <div key={s.label} className={`rounded-xl border p-3 text-center ${s.cls}`}>
-              <p className="text-2xl font-bold">{s.value}</p>
-              <p className="text-xs mt-0.5 opacity-80">{s.label}</p>
-            </div>
-          ))}
-        </div>
-
         {/* Search */}
         <div className="relative">
           <Search size={15} className="absolute top-1/2 -translate-y-1/2 right-3.5 text-slate-400 pointer-events-none" />
@@ -313,7 +291,7 @@ function DataView({ home, aids }: { home: string; aids: Aid[] }) {
               <table className="w-full text-sm text-right">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
-                    {['שם היולדת', 'ת.ז.', 'שם התינוק', 'תאריך לידה', 'ימים שנותרו', ''].map(h => (
+                    {['שם היולדת', 'ת.ז.', 'שם התינוק', 'תאריך לידה', ''].map(h => (
                       <th key={h} className="px-4 py-3 text-xs font-semibold text-slate-500 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -321,8 +299,6 @@ function DataView({ home, aids }: { home: string; aids: Aid[] }) {
                 <tbody className="divide-y divide-slate-100">
                   {filtered.map(aid => {
                     const m = aid.beneficiary
-                    const days = daysLeft(aid)
-                    const urgent = days <= 7
                     return (
                       <tr key={aid.id} className="hover:bg-indigo-50/40 transition-colors cursor-pointer"
                         onClick={() => setSelected(aid)}>
@@ -330,13 +306,6 @@ function DataView({ home, aids }: { home: string; aids: Aid[] }) {
                         <td className="px-4 py-3.5 text-xs font-mono text-slate-500 ltr-num">{m?.spouse_id_number ?? '—'}</td>
                         <td className="px-4 py-3.5 text-slate-700">{aid.baby_name ?? '—'}</td>
                         <td className="px-4 py-3.5 text-slate-600 ltr-num whitespace-nowrap">{fmtDate(aid.birth_date)}</td>
-                        <td className="px-4 py-3.5">
-                          <span className={`inline-flex items-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1 ${
-                            urgent ? 'bg-red-100 text-red-700' : days <= 14 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
-                          }`}>
-                            <Clock size={10} />{days} ימים
-                          </span>
-                        </td>
                         <td className="px-4 py-3.5">
                           <span className="inline-flex items-center gap-1 text-xs text-indigo-600 font-medium">
                             <ChevronLeft size={13} /> פרטים
