@@ -285,7 +285,7 @@ export default function NewLoanPage() {
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-slate-600">סכום ההלוואה המבוקש (₪) <span className="text-red-500">*</span></label>
                 <input type="text" inputMode="numeric" value={amount}
-                  onChange={e => { setAmount(e.target.value.replace(/\D/g, '').slice(0, 6)); clearErr('amount') }}
+                  onChange={e => { const v = e.target.value.replace(/\D/g, ''); setAmount(v === '' ? '' : String(Math.min(parseInt(v, 10), MAX_AMOUNT))); clearErr('amount') }}
                   placeholder="0"
                   className={`rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ltr-num text-left ${fieldErrors.amount ? 'border-red-400 focus:ring-red-400' : 'border-slate-300 focus:ring-indigo-500'}`}
                   dir="ltr" />
@@ -295,7 +295,7 @@ export default function NewLoanPage() {
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-slate-600">מספר תשלומים להחזר <span className="text-red-500">*</span></label>
                 <input type="text" inputMode="numeric" value={installments}
-                  onChange={e => { setInstallments(e.target.value.replace(/\D/g, '').slice(0, 2)); clearErr('installments') }}
+                  onChange={e => { const v = e.target.value.replace(/\D/g, ''); setInstallments(v === '' ? '' : String(Math.min(parseInt(v, 10), MAX_INSTALLMENTS))); clearErr('installments') }}
                   placeholder="בחר/י מספר תשלומים"
                   className={`rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ltr-num text-left ${fieldErrors.installments ? 'border-red-400 focus:ring-red-400' : 'border-slate-300 focus:ring-indigo-500'}`}
                   dir="ltr" />
