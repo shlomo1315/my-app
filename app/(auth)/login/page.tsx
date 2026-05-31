@@ -5,25 +5,71 @@ import { createClient } from '@/lib/supabase/client'
 import { Building2, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import Button from '@/components/ui/Button'
 
+const CONFETTI_COLORS = ['#6366f1', '#a855f7', '#ec4899', '#f59e0b', '#22c55e', '#3b82f6', '#ef4444', '#14b8a6', '#ffffff']
+
 function WelcomeScreen({ name }: { name: string }) {
-  const [visible, setVisible] = useState(true)
+  const [logoError, setLogoError] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const pieces = Array.from({ length: 90 })
+
   useEffect(() => {
-    const t = setTimeout(() => setVisible(false), 2800)
+    const t = setTimeout(() => setClosing(true), 2000)
     return () => clearTimeout(t)
   }, [])
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 transition-opacity duration-500 ${visible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-      <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-white/10" />
-      <div className="absolute -bottom-20 -left-20 w-96 h-96 rounded-full bg-white/5" />
-      <div className="relative text-center text-white px-8">
-        <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-6 backdrop-blur-sm">
-          <Building2 size={36} className="text-white" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-indigo-700 via-violet-600 to-purple-700"
+      style={{ animation: closing ? 'welcome-out 0.5s ease-in forwards' : 'welcome-in 0.5s ease-out forwards' }}>
+
+      {/* Confetti */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        {pieces.map((_, i) => {
+          const left = Math.random() * 100
+          const delay = Math.random() * 1.2
+          const duration = 2.5 + Math.random() * 2
+          const size = 7 + Math.random() * 9
+          const color = CONFETTI_COLORS[i % CONFETTI_COLORS.length]
+          const rounded = Math.random() > 0.4
+          return (
+            <span key={i} style={{
+              position: 'absolute', left: `${left}%`, top: '-5%',
+              width: size, height: size * (rounded ? 1 : 1.8),
+              background: color, borderRadius: rounded ? '9999px' : '2px',
+              opacity: 0.85,
+              animation: `confetti-fall ${duration}s linear ${delay}s forwards`,
+            }} />
+          )
+        })}
+      </div>
+
+      {/* Decorative circles */}
+      <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-white/10" />
+      <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-white/5" />
+
+      {/* Card */}
+      <div className="relative text-center text-white px-8 max-w-sm w-full mx-4"
+        style={{ animation: 'pop-in 0.5s ease-out 0.15s both' }}>
+
+        {/* Logo */}
+        <div className="w-28 h-28 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl overflow-hidden p-2">
+          {logoError ? (
+            <Building2 size={44} className="text-indigo-600" />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/logo.jpg" alt="לוגו" className="w-full h-full object-contain"
+              onError={() => setLogoError(true)} />
+          )}
         </div>
-        <h1 className="text-3xl font-bold mb-2">שלום, {name} 👋</h1>
+
+        <h1 className="text-4xl font-bold mb-3 drop-shadow-lg">שלום, {name} 👋</h1>
         <p className="text-indigo-100 text-lg mb-1">ברוכים הבאים לתוכנת הניהול</p>
-        <p className="text-white font-semibold text-xl">היכל החתם סופר</p>
-        <p className="text-indigo-200 text-sm mt-6">מיד תועבר לניהול האתר...</p>
+        <p className="text-white font-bold text-2xl drop-shadow">היכל החתם סופר</p>
+        <p className="text-indigo-200 text-sm mt-8">מיד תועבר לניהול האתר...</p>
+
+        {/* Progress bar */}
+        <div className="mt-4 h-1 w-48 bg-white/20 rounded-full overflow-hidden mx-auto">
+          <div className="h-full bg-white rounded-full" style={{ animation: 'shrink 2s linear forwards' }} />
+        </div>
       </div>
     </div>
   )
