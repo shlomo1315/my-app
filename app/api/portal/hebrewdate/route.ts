@@ -23,7 +23,8 @@ export async function GET() {
     // Hebrew year only
     const hebrewYear = gematriya(today.getFullYear())
 
-    return NextResponse.json({ hebrewDate, parasha, hebrewYear })
+    const strip = (s: string) => s.replace(/[֑-ׇ]/g, '')
+    return NextResponse.json({ hebrewDate: strip(hebrewDate), parasha: strip(parasha), hebrewYear: strip(hebrewYear) })
   } catch {
     return NextResponse.json({ hebrewDate: '', parasha: '', hebrewYear: '' })
   }
