@@ -150,6 +150,28 @@ export default function NewMaternityPage() {
         .single()
 
       if (error) throw error
+
+      // הכנסת התינוק לכרטסת המשפחה (פרטי הילדים) בסטטוס "ממתין לאישור לידה".
+      // עם אישור הלידה בתיק היולדת הסטטוס יתעדכן ל"מאושר".
+      const existingChildren = Array.isArray((mother as { children?: Record<string, unknown>[] }).children)
+        ? ((mother as { children: Record<string, unknown>[] }).children)
+        : []
+      const newChild = {
+        name: babyName.trim(),
+        id_number: babyIdNumber.trim() || null,
+        doc_type: babyIdType,
+        gender: babyGender || null,
+        birth_date: babyBirthDate || null,
+        marital_status: 'single',
+        maternity_aid_id: inserted.id,
+        birth_status: 'pending' as const,
+      }
+      const updatedChildren = [...existingChildren, newChild]
+      await supabase
+        .from('beneficiaries')
+        .update({ children: updatedChildren, children_count: updatedChildren.length })
+        .eq('id', mother.id)
+
       router.push(`/admin/maternity/${inserted.id}`)
     } catch (e) {
       setSaveError('שגיאה בשמירה — נסה שוב')

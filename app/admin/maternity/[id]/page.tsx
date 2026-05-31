@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
 import { MaternityAid } from '@/types'
 import Card from '@/components/ui/Card'
-import StatusBadge from '@/components/ui/StatusBadge'
+import { StatusControl } from '../MaternityTable'
 import { format } from 'date-fns'
 import { he } from 'date-fns/locale'
 
@@ -14,7 +14,7 @@ async function getAid(id: string): Promise<MaternityAid | null> {
     const supabase = await createClient()
     const { data } = await supabase
       .from('maternity_aids')
-      .select('*, beneficiary:beneficiaries(full_name, family_name, phone, id_number, spouse_name, spouse_id_number)')
+      .select('*, beneficiary:beneficiaries(id, full_name, family_name, phone, id_number, spouse_name, spouse_id_number, children, children_count)')
       .eq('id', id)
       .single()
     return data
@@ -70,7 +70,7 @@ export default async function MaternityDetailPage({ params }: { params: Promise<
             {motherId && <p className="text-sm text-slate-500 ltr-num">ת.ז. {motherId}</p>}
           </div>
         </div>
-        <StatusBadge status={aid.status} />
+        <StatusControl aid={aid} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -92,7 +92,7 @@ export default async function MaternityDetailPage({ params }: { params: Promise<
             <p className="text-sm"><span className="text-slate-500">{aid.baby_id_type === 'passport' ? 'דרכון' : 'ת.ז.'}: </span><span className="ltr-num font-mono text-xs">{aid.baby_id_number}</span></p>
           )}
           {aid.six_weeks_end && (
-            <p className="text-sm"><span className="text-slate-500">סיום 6 שבועות: </span><span className="ltr-num text-indigo-600 font-medium">{fmtDate(aid.six_weeks_end)}</span></p>
+            <p className="text-sm"><span className="text-slate-500">6 שבועות לאחר הלידה: </span><span className="ltr-num text-indigo-600 font-medium">{fmtDate(aid.six_weeks_end)}</span></p>
           )}
         </Card>
 
@@ -116,16 +116,14 @@ export default async function MaternityDetailPage({ params }: { params: Promise<
         </Card>
       </div>
 
-      {(aid.recovery_home || aid.recovery_from) && (
+      {aid.recovery_home && (
         <Card>
           <div className="flex items-center gap-2 text-indigo-600 mb-3">
             <Home size={16} />
             <span className="text-xs font-semibold text-slate-500 uppercase">בית החלמה</span>
           </div>
-          <div className="grid grid-cols-3 gap-4 text-sm">
-            <div><span className="text-slate-500">שם: </span>{aid.recovery_home ?? '—'}</div>
-            <div><span className="text-slate-500">מתאריך: </span><span className="ltr-num">{fmtDate(aid.recovery_from)}</span></div>
-            <div><span className="text-slate-500">עד תאריך: </span><span className="ltr-num">{fmtDate(aid.recovery_to)}</span></div>
+          <div className="text-sm">
+            <span className="text-slate-500">שם: </span>{aid.recovery_home}
           </div>
         </Card>
       )}
