@@ -5,6 +5,7 @@ import { Profile, ROLE_LABELS } from '@/types'
 import LineageTreeManager from '@/components/admin/LineageTreeManager'
 import AddUserButton from './AddUserButton'
 import EditUserButton from './EditUserButton'
+import RecoveryHomeLinks from '../maternity/RecoveryHomeLinks'
 
 async function getProfiles(): Promise<Profile[]> {
   if (!isSupabaseConfigured()) return []
@@ -17,8 +18,23 @@ async function getProfiles(): Promise<Profile[]> {
   }
 }
 
+async function getRecoveryHomes(): Promise<string[]> {
+  if (!isSupabaseConfigured()) return []
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('maternity_aids')
+      .select('recovery_home')
+      .not('recovery_home', 'is', null)
+    if (!data) return []
+    return [...new Set(data.map((r: { recovery_home: string }) => r.recovery_home).filter(Boolean))].sort()
+  } catch {
+    return []
+  }
+}
+
 export default async function SettingsPage() {
-  const profiles = await getProfiles()
+  const [profiles, recoveryHomes] = await Promise.all([getProfiles(), getRecoveryHomes()])
 
   return (
     <div className="flex flex-col gap-5 max-w-3xl">
@@ -115,6 +131,8 @@ export default async function SettingsPage() {
         <Card>
           <LineageTreeManager />
         </Card>
+
+        <RecoveryHomeLinks homes={recoveryHomes} />
 
         <Card>
           <div className="flex items-center gap-2 mb-4">

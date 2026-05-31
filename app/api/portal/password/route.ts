@@ -38,8 +38,8 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   if (!await verifyAdmin()) return NextResponse.json({ error: 'אין הרשאה' }, { status: 403 })
   const { home_name, password } = await request.json()
-  if (!home_name || !password || password.length < 4) {
-    return NextResponse.json({ error: 'סיסמה חייבת להיות לפחות 4 תווים' }, { status: 400 })
+  if (!home_name || !password || password.length < 10) {
+    return NextResponse.json({ error: 'סיסמה חייבת להיות לפחות 10 תווים' }, { status: 400 })
   }
   const admin = getAdminClient()
   if (!admin) return NextResponse.json({ error: 'שגיאת שרת' }, { status: 500 })
