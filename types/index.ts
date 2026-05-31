@@ -43,6 +43,7 @@ export interface Beneficiary {
   spouse_id_number?: string
   lineage_node_id?: string
   children_count: number
+  children?: { name: string; id_number: string | null; gender: string | null; birth_date: string | null }[]
   eligibility_status: EligibilityStatus
   is_active: boolean
   notes?: string
