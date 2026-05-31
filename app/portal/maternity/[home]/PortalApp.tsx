@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
   Building2, Baby, CalendarDays, Clock, Search, Eye, EyeOff,
-  AlertCircle, Lock, X, User, Phone, MapPin, CreditCard, ChevronLeft
+  AlertCircle, Lock, X, User, Phone, MapPin, ChevronLeft
 } from 'lucide-react'
 import { format, differenceInDays, addDays } from 'date-fns'
 import { he } from 'date-fns/locale'
@@ -196,12 +196,6 @@ function DetailModal({ aid, onClose }: { aid: Aid; onClose: () => void }) {
               <p className="text-xs font-semibold text-sky-500 uppercase tracking-wide mb-2">תקופת שהייה</p>
               {aid.recovery_from && <Row icon={<CalendarDays size={14} />} label="מתאריך" value={fmtDate(aid.recovery_from)} />}
               {aid.recovery_to && <Row icon={<CalendarDays size={14} />} label="עד תאריך" value={fmtDate(aid.recovery_to)} />}
-            </div>
-          )}
-
-          {aid.card_number && (
-            <div className="bg-amber-50 rounded-xl p-3">
-              <Row icon={<CreditCard size={14} />} label="מספר כרטיס נדרים" value={aid.card_number} ltr />
             </div>
           )}
 
