@@ -7,6 +7,7 @@ import Card from '@/components/ui/Card'
 import { StatusControl } from '../MaternityTable'
 import MaternityActions from './MaternityActions'
 import BackButton from '@/components/ui/BackButton'
+import BirthCertificatePreview from './BirthCertificatePreview'
 import { format, differenceInCalendarDays } from 'date-fns'
 import { he } from 'date-fns/locale'
 
@@ -28,8 +29,6 @@ async function getAid(id: string): Promise<MaternityAid | null> {
 const fmtDate = (d?: string) => d ? format(new Date(d), 'dd/MM/yyyy', { locale: he }) : '—'
 const fmtCur = (n: number) =>
   new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(n)
-// תצוגת תמונה מוטמעת רק עבור קבצי תמונה — אחרת קישור (למשל PDF)
-const isImage = (url: string) => /\.(png|jpe?g|gif|webp|bmp|svg)(\?|$)/i.test(url)
 
 export default async function MaternityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -145,18 +144,7 @@ export default async function MaternityDetailPage({ params }: { params: Promise<
             <FileText size={16} />
             <span className="text-xs font-semibold text-slate-500 uppercase">אישור לידה</span>
           </div>
-          {isImage(aid.birth_certificate_url) ? (
-            <a href={aid.birth_certificate_url} target="_blank" rel="noopener noreferrer" className="block">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={aid.birth_certificate_url} alt="אישור לידה"
-                className="max-h-64 rounded-lg border border-slate-200 hover:opacity-90 transition-opacity" />
-            </a>
-          ) : (
-            <a href={aid.birth_certificate_url} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 px-3 py-2 rounded-lg border border-indigo-200 hover:bg-indigo-50 transition-colors">
-              <FileText size={15} /> צפייה באישור הלידה
-            </a>
-          )}
+          <BirthCertificatePreview aidId={aid.id} beneficiaryId={aid.beneficiary_id} url={aid.birth_certificate_url} />
         </Card>
       )}
 
