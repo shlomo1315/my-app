@@ -1,11 +1,36 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Link2, Check, Building2, Lock, Eye, EyeOff, Loader2, Trash2, Plus } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Link2, Check, Building2, Lock, Eye, EyeOff, Loader2, Trash2, Plus, X } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 interface Portal { home_name: string; updated_at: string }
 
 export default function RecoveryHomeLinks({ homes }: { homes: string[] }) {
+  const router = useRouter()
+  const supabase = createClient()
   const [portals, setPortals] = useState<Portal[]>([])
+  const [adding, setAdding] = useState(false)
+  const [newHome, setNewHome] = useState('')
+  const [addingSaving, setAddingSaving] = useState(false)
+  const [addError, setAddError] = useState('')
+
+  const addHome = async () => {
+    const name = newHome.trim()
+    if (!name) return
+    if (homes.includes(name)) { setAddError('בית החלמה זה כבר קיים ברשימה'); return }
+    setAddingSaving(true); setAddError('')
+    try {
+      const { error } = await supabase.from('recovery_homes').insert({ name })
+      if (error) throw error
+      setNewHome(''); setAdding(false)
+      router.refresh()
+    } catch (e) {
+      setAddError(e instanceof Error ? e.message : 'שגיאה בהוספה')
+    } finally {
+      setAddingSaving(false)
+    }
+  }
   const [copied, setCopied] = useState<string | null>(null)
   const [editingHome, setEditingHome] = useState<string | null>(null)
   const [pw, setPw] = useState('')
@@ -22,8 +47,6 @@ export default function RecoveryHomeLinks({ homes }: { homes: string[] }) {
       .then(d => setPortals(d.portals ?? []))
       .catch(() => {})
   }, [])
-
-  if (homes.length === 0) return null
 
   const copyLink = (home: string) => {
     const url = `${window.location.origin}/portal/maternity/${encodeURIComponent(home)}`
@@ -79,10 +102,36 @@ export default function RecoveryHomeLinks({ homes }: { homes: string[] }) {
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-3 border-b border-slate-200 flex items-center gap-2">
-        <Link2 size={16} className="text-indigo-500" />
-        <h2 className="text-sm font-semibold text-slate-700">פורטל בתי החלמה</h2>
+      <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Link2 size={16} className="text-indigo-500" />
+          <h2 className="text-sm font-semibold text-slate-700">פורטל בתי החלמה</h2>
+        </div>
+        <button onClick={() => { setAdding(a => !a); setAddError('') }}
+          className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800">
+          <Plus size={14} /> הוסף בית החלמה
+        </button>
       </div>
+
+      {adding && (
+        <div className="px-5 py-3 border-b border-slate-100 bg-indigo-50/40 flex items-center gap-2 flex-wrap">
+          <input
+            value={newHome}
+            onChange={e => { setNewHome(e.target.value); setAddError('') }}
+            onKeyDown={e => e.key === 'Enter' && addHome()}
+            placeholder="שם בית החלמה חדש"
+            className="flex-1 min-w-[180px] rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            autoFocus
+          />
+          <button onClick={addHome} disabled={addingSaving || !newHome.trim()}
+            className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors">
+            {addingSaving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} שמור
+          </button>
+          <button onClick={() => { setAdding(false); setNewHome(''); setAddError('') }}
+            className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"><X size={14} /></button>
+          {addError && <span className="text-xs text-red-600 w-full">{addError}</span>}
+        </div>
+      )}
 
       <div className="divide-y divide-slate-100">
         {homes.map(home => (

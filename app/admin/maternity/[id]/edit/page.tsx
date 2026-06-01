@@ -23,6 +23,12 @@ export default function EditMaternityPage({ params }: { params: Promise<{ id: st
   const supabase = createClient()
   const fileRef = useRef<HTMLInputElement>(null)
 
+  const [recoveryHomes, setRecoveryHomes] = useState<string[]>(RECOVERY_HOMES)
+  useEffect(() => {
+    supabase.from('recovery_homes').select('name').order('name').then(({ data }) => {
+      if (data && data.length) setRecoveryHomes([...new Set([...RECOVERY_HOMES, ...data.map((r: { name: string }) => r.name)])])
+    })
+  }, [supabase])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [motherId, setMotherId] = useState<string | null>(null)

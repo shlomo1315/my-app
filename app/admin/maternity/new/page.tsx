@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowRight, Search, Loader2, Check, AlertTriangle, Upload, X, Baby, ExternalLink, GitBranch, ChevronLeft } from 'lucide-react'
@@ -43,6 +43,13 @@ export default function NewMaternityPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [savedInfo, setSavedInfo] = useState<{ name: string; details: string[] } | null>(null)
   const [lineagePath, setLineagePath] = useState<string[]>([])
+  // רשימת בתי החלמה — נטענת דינמית (כולל בתים שנוספו), עם נפילה לברירת המחדל
+  const [recoveryHomes, setRecoveryHomes] = useState<string[]>(RECOVERY_HOMES)
+  useEffect(() => {
+    supabase.from('recovery_homes').select('name').order('name').then(({ data }) => {
+      if (data && data.length) setRecoveryHomes([...new Set([...RECOVERY_HOMES, ...data.map((r: { name: string }) => r.name)])])
+    })
+  }, [supabase])
 
   // שליפת שרשרת הדורות (עץ הדורות) של המשפחה שנמצאה
   const loadLineage = async (lineageNodeId?: string, manual?: unknown) => {
@@ -403,7 +410,7 @@ export default function NewMaternityPage() {
             <div className="flex flex-col gap-2">
               <label className="text-xs font-medium text-slate-600">בית החלמה <span className="text-red-500">*</span></label>
               <div className="flex gap-2">
-                {RECOVERY_HOMES.map(h => (
+                {recoveryHomes.map(h => (
                   <button key={h} onClick={() => { setRecoveryHome(recoveryHome === h ? '' : h); clearErr('recoveryHome') }}
                     className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${recoveryHome === h ? 'bg-indigo-600 border-indigo-600 text-white' : `${fieldErrors.recoveryHome ? 'border-red-400' : 'border-slate-300'} text-slate-600 hover:bg-slate-50`}`}>
                     {h}
