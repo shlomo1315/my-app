@@ -1,6 +1,7 @@
 'use client'
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Clock, Check, X, Eye, Search, Layers } from 'lucide-react'
 import { LoanStatusControl, DeleteLoanButton } from './LoanControls'
 import type { Loan } from '@/types'
@@ -40,6 +41,7 @@ const haystack = (l: Loan) => {
 }
 
 export default function LoansTable({ data }: { data: Loan[] }) {
+  const router = useRouter()
   const [filter, setFilter] = useState<Filter>('all')
   const [query, setQuery] = useState('')
 
@@ -103,15 +105,17 @@ export default function LoansTable({ data }: { data: Loan[] }) {
               ) : filtered.map(loan => {
                 const b = loan.beneficiary as BenRef | undefined
                 return (
-                  <tr key={loan.id} className="even:bg-slate-50/50 hover:bg-indigo-50/50 transition-colors">
+                  <tr key={loan.id}
+                    onClick={() => router.push(`/admin/loans/${loan.id}`)}
+                    className="even:bg-slate-50/50 hover:bg-indigo-50/50 transition-colors cursor-pointer">
                     <td className="px-4 py-3.5 align-middle text-right font-medium text-slate-800 whitespace-nowrap">{borrowerName(b)}</td>
                     <td className="px-4 py-3.5 align-middle text-right text-xs font-mono text-slate-500"><span className="ltr-num">{b?.id_number ?? '—'}</span></td>
                     <td className="px-4 py-3.5 align-middle text-right font-semibold text-slate-900"><span className="ltr-num">{fmtCur(loan.amount)}</span></td>
                     <td className="px-4 py-3.5 align-middle text-right text-slate-600">{loan.installments}</td>
                     <td className="px-4 py-3.5 align-middle text-right text-slate-600 max-w-[140px] truncate">{loan.purpose ?? '—'}</td>
                     <td className="px-4 py-3.5 align-middle text-right text-slate-500 text-xs"><span className="ltr-num">{fmtDate(loan.created_at)}</span></td>
-                    <td className="px-4 py-3.5 align-middle"><LoanStatusControl loan={loan} /></td>
-                    <td className="px-4 py-3.5 align-middle">
+                    <td className="px-4 py-3.5 align-middle" onClick={e => e.stopPropagation()}><LoanStatusControl loan={loan} /></td>
+                    <td className="px-4 py-3.5 align-middle" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center gap-2">
                         <Link href={`/admin/loans/${loan.id}`}
                           className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors">
