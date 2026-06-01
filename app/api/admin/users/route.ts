@@ -44,13 +44,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'מפתח השירות (SERVICE_ROLE) אינו מוגדר בשרת' }, { status: 500 })
   }
 
-  let body: { full_name?: string; email?: string; password?: string; role?: string; permissions?: Record<string, string> }
+  let body: { full_name?: string; email?: string; password?: string; role?: string; phone?: string; permissions?: Record<string, string> }
   try { body = await request.json() } catch { return NextResponse.json({ error: 'בקשה לא תקינה' }, { status: 400 }) }
 
   const full_name = String(body.full_name ?? '').trim()
   const email = String(body.email ?? '').toLowerCase().trim()
   const password = String(body.password ?? '')
   const role = String(body.role ?? '')
+  const phone = body.phone ? String(body.phone).trim() : null
   const permissions = body.permissions ?? {}
 
   if (!full_name) return NextResponse.json({ error: 'שם מלא חובה' }, { status: 400 })
@@ -70,13 +71,36 @@ export async function POST(request: NextRequest) {
 
   // יצירת פרופיל מקושר
   const { error: profErr } = await admin.from('profiles').insert({
-    id: created.user.id, email, full_name, role, is_active: true, permissions,
+    id: created.user.id, email, full_name, role, phone, is_active: true, permissions,
   })
   if (profErr) {
     // ניקוי: אם הפרופיל נכשל, מחק את משתמש האימות שנוצר
     await admin.auth.admin.deleteUser(created.user.id)
     return NextResponse.json({ error: `שגיאה ביצירת הפרופיל: ${profErr.message}` }, { status: 500 })
   }
+
+  return NextResponse.json({ ok: true })
+}
+
+export async function DELETE(request: NextRequest) {
+  const isAdmin = await verifyAdmin()
+  if (!isAdmin) {
+    return NextResponse.json({ error: 'אין הרשאה' }, { status: 403 })
+  }
+
+  const admin = getAdminClient()
+  if (!admin) {
+    return NextResponse.json({ error: 'מפתח השירות אינו מוגדר' }, { status: 500 })
+  }
+
+  let body: { id?: string }
+  try { body = await request.json() } catch { return NextResponse.json({ error: 'בקשה לא תקינה' }, { status: 400 }) }
+
+  const { id } = body
+  if (!id) return NextResponse.json({ error: 'חסר מזהה משתמש' }, { status: 400 })
+
+  const { error } = await admin.auth.admin.deleteUser(id)
+  if (error) return NextResponse.json({ error: `שגיאה במחיקה: ${error.message}` }, { status: 500 })
 
   return NextResponse.json({ ok: true })
 }
