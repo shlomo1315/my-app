@@ -88,7 +88,7 @@ export default function AddUserButton() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4" onClick={close}>
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200">
-              <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2"><UserPlus size={16} className="text-indigo-500" /> הוספת משתמש מערכת</h3>
+              <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2"><UserPlus size={16} className="text-indigo-500" /> הוסף משתמש חדש למערכת</h3>
               <button onClick={close} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
             </div>
 
@@ -110,7 +110,7 @@ export default function AddUserButton() {
                     className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-slate-600">טלפון</label>
+                  <label className="text-xs font-medium text-slate-600">טלפון <span className="text-red-500">*</span></label>
                   <input value={phone} onChange={e => setPhone(e.target.value)}
                     placeholder="05X-XXXXXXX" dir="ltr"
                     className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-indigo-500" />
@@ -192,7 +192,7 @@ export default function AddUserButton() {
 
                 <div className="flex gap-2 justify-end mt-1">
                   <button onClick={close} disabled={saving} className="px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50">ביטול</button>
-                  <button onClick={submit} disabled={saving || !fullName.trim() || !email.trim() || password.length < 6}
+                  <button onClick={submit} disabled={saving || !fullName.trim() || !email.trim() || !phone.trim() || password.length < 6}
                     className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
                     {saving ? <Loader2 size={15} className="animate-spin" /> : <UserPlus size={15} />} צור משתמש
                   </button>
