@@ -18,18 +18,22 @@ async function getProfiles(): Promise<Profile[]> {
   }
 }
 
+// רשימת בתי ההחלמה הקבועה — תמיד מוצגת, גם אם אין כרגע אף יולדת בבית מסוים
+const RECOVERY_HOMES = ['אם וילד', 'טלזסטון', 'ביכורים']
+
 async function getRecoveryHomes(): Promise<string[]> {
-  if (!isSupabaseConfigured()) return []
+  if (!isSupabaseConfigured()) return RECOVERY_HOMES
   try {
     const supabase = await createClient()
     const { data } = await supabase
       .from('maternity_aids')
       .select('recovery_home')
       .not('recovery_home', 'is', null)
-    if (!data) return []
-    return [...new Set(data.map((r: { recovery_home: string }) => r.recovery_home).filter(Boolean))].sort()
+    const fromDb = (data ?? []).map((r: { recovery_home: string }) => r.recovery_home).filter(Boolean)
+    // איחוד הרשימה הקבועה עם בתים נוספים שנמצאו בנתונים
+    return [...new Set([...RECOVERY_HOMES, ...fromDb])]
   } catch {
-    return []
+    return RECOVERY_HOMES
   }
 }
 
