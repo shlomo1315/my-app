@@ -1,37 +1,38 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { HDate, Sedra, Locale, HebrewCalendar, flags, Zmanim, Location } from '@hebcal/core'
-import { Clock, CalendarDays, BookOpen, Sparkles, Hourglass } from 'lucide-react'
+import { Clock, CalendarDays, BookOpen, Sparkles, Sunrise, Sun, Sunset, MoonStar } from 'lucide-react'
 
 // מיקום לחישוב זמני הלכה. ניתן להחליף לעיר אחרת (למשל 'Bnei Brak') במידת הצורך.
 const ZMANIM_LOCATION = Location.lookup('Jerusalem') ?? Location.lookup('Tel Aviv') ?? null
 const ZMANIM_TZ = 'Asia/Jerusalem'
 
-type Zman = { name: string; t: Date }
+type ZmanIcon = typeof Sun
+type Zman = { name: string; t: Date; Icon: ZmanIcon }
 
-// רשימת זמני ההלכה היומיים לפי הסדר הכרונולוגי
+// רשימת זמני ההלכה היומיים — לכל זמן אייקון מתאים (זריחה / שמש / שקיעה / לילה)
 function dayZmanim(date: Date): Zman[] {
   if (!ZMANIM_LOCATION) return []
   const z = new Zmanim(ZMANIM_LOCATION, date, false)
-  const list: { name: string; fn: () => Date }[] = [
-    { name: 'עלות השחר', fn: () => z.alotHaShachar() },
-    { name: 'זמן טלית ותפילין', fn: () => z.misheyakir() },
-    { name: 'הנץ החמה', fn: () => z.neitzHaChama() },
-    { name: 'סוף זמן ק״ש (מג״א)', fn: () => z.sofZmanShmaMGA() },
-    { name: 'סוף זמן ק״ש (גר״א)', fn: () => z.sofZmanShma() },
-    { name: 'סוף זמן תפילה', fn: () => z.sofZmanTfilla() },
-    { name: 'חצות היום', fn: () => z.chatzot() },
-    { name: 'מנחה גדולה', fn: () => z.minchaGedola() },
-    { name: 'מנחה קטנה', fn: () => z.minchaKetana() },
-    { name: 'פלג המנחה', fn: () => z.plagHaMincha() },
-    { name: 'שקיעה', fn: () => z.shkiah() },
-    { name: 'צאת הכוכבים', fn: () => z.tzeit() },
+  const list: { name: string; fn: () => Date; Icon: ZmanIcon }[] = [
+    { name: 'עלות השחר', fn: () => z.alotHaShachar(), Icon: Sunrise },
+    { name: 'זמן טלית ותפילין', fn: () => z.misheyakir(), Icon: Sunrise },
+    { name: 'הנץ החמה', fn: () => z.neitzHaChama(), Icon: Sunrise },
+    { name: 'סוף זמן ק״ש (מג״א)', fn: () => z.sofZmanShmaMGA(), Icon: Sun },
+    { name: 'סוף זמן ק״ש (גר״א)', fn: () => z.sofZmanShma(), Icon: Sun },
+    { name: 'סוף זמן תפילה', fn: () => z.sofZmanTfilla(), Icon: Sun },
+    { name: 'חצות היום', fn: () => z.chatzot(), Icon: Sun },
+    { name: 'מנחה גדולה', fn: () => z.minchaGedola(), Icon: Sun },
+    { name: 'מנחה קטנה', fn: () => z.minchaKetana(), Icon: Sun },
+    { name: 'פלג המנחה', fn: () => z.plagHaMincha(), Icon: Sunset },
+    { name: 'שקיעה', fn: () => z.shkiah(), Icon: Sunset },
+    { name: 'צאת הכוכבים', fn: () => z.tzeit(), Icon: MoonStar },
   ]
   const out: Zman[] = []
   for (const item of list) {
     try {
       const t = item.fn()
-      if (t instanceof Date && !isNaN(t.getTime())) out.push({ name: item.name, t })
+      if (t instanceof Date && !isNaN(t.getTime())) out.push({ name: item.name, t, Icon: item.Icon })
     } catch { /* דילוג על זמן שלא ניתן לחשב */ }
   }
   // מיון כרונולוגי — חשוב כי שני סוגי ק״ש (מג״א/גר״א) לא בהכרח לפי סדר הקריאה
@@ -46,14 +47,16 @@ function nextZman(now: Date): Zman | null {
   return all.find(z => z.t.getTime() > now.getTime()) ?? null
 }
 
-// כמה זמן נשאר עד הזמן הקרוב — ספירה לאחור חיה
+// כמה זמן נשאר עד הזמן הקרוב — במילים: "בעוד שעתיים ו־30 דקות"
 function remaining(ms: number): string {
-  const total = Math.max(0, Math.floor(ms / 1000))
-  const h = Math.floor(total / 3600)
-  const m = Math.floor((total % 3600) / 60)
-  const s = total % 60
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return h > 0 ? `בעוד ${h}:${pad(m)}:${pad(s)}` : `בעוד ${m}:${pad(s)}`
+  const totalMin = Math.max(0, Math.floor(ms / 60000))
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  if (h === 0 && m === 0) return 'בעוד פחות מדקה'
+  const hourPart = h === 1 ? 'שעה' : h === 2 ? 'שעתיים' : h > 2 ? `${h} שעות` : ''
+  const minPart = m === 1 ? 'דקה' : m > 0 ? `${m} דקות` : ''
+  const parts = [hourPart, minPart].filter(Boolean)
+  return 'בעוד ' + parts.join(' ו־')
 }
 
 // חגים ומועדים יהודיים בלבד (כולל ראש חודש) — ללא ימי החג הישראליים המודרניים
@@ -107,20 +110,20 @@ export default function HeaderDateTime() {
 
   return (
     <div className="hidden md:flex items-center gap-3 text-xs">
+      {nz && (
+        <>
+          <span className="inline-flex items-center gap-1.5 text-slate-700 font-semibold tabular-nums">
+            <nz.Icon size={13} className="text-indigo-500" />
+            <span>{nz.name}</span>
+            <span className="ltr-num">{nzTime}</span>
+            <span className="font-normal text-slate-500">({nzRemaining})</span>
+          </span>
+          <span className="h-3.5 w-px bg-slate-200" />
+        </>
+      )}
       <span className="inline-flex items-center gap-1 text-slate-700 font-semibold tabular-nums">
         <Clock size={13} className="text-indigo-500" /> {time}
       </span>
-      {nz && (
-        <>
-          <span className="h-3.5 w-px bg-slate-200" />
-          <span className="inline-flex items-center gap-1.5 text-emerald-700 font-medium tabular-nums">
-            <Hourglass size={13} className="text-emerald-500" />
-            <span>{nz.name}</span>
-            <span className="ltr-num font-semibold">{nzTime}</span>
-            <span className="text-emerald-600/70 ltr-num">({nzRemaining})</span>
-          </span>
-        </>
-      )}
       <span className="h-3.5 w-px bg-slate-200" />
       <span className="inline-flex items-center gap-1.5 text-slate-600">
         <CalendarDays size={13} className="text-indigo-500" />
