@@ -25,13 +25,14 @@ async function getRecoveryHomes(): Promise<string[]> {
   if (!isSupabaseConfigured()) return RECOVERY_HOMES
   try {
     const supabase = await createClient()
-    const { data } = await supabase
-      .from('maternity_aids')
-      .select('recovery_home')
-      .not('recovery_home', 'is', null)
-    const fromDb = (data ?? []).map((r: { recovery_home: string }) => r.recovery_home).filter(Boolean)
-    // איחוד הרשימה הקבועה עם בתים נוספים שנמצאו בנתונים
-    return [...new Set([...RECOVERY_HOMES, ...fromDb])]
+    const [homesTable, maternity] = await Promise.all([
+      supabase.from('recovery_homes').select('name').order('name'),
+      supabase.from('maternity_aids').select('recovery_home').not('recovery_home', 'is', null),
+    ])
+    const fromTable = (homesTable.data ?? []).map((r: { name: string }) => r.name).filter(Boolean)
+    const fromMaternity = (maternity.data ?? []).map((r: { recovery_home: string }) => r.recovery_home).filter(Boolean)
+    // איחוד: ברירת מחדל + טבלת הבתים + בתים שנמצאו בתיקי לידה
+    return [...new Set([...RECOVERY_HOMES, ...fromTable, ...fromMaternity])]
   } catch {
     return RECOVERY_HOMES
   }

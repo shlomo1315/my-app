@@ -286,7 +286,7 @@ export default function MaternityTable({ data }: { data: MaternityAid[] }) {
       {/* Table */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
         <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between gap-3 flex-wrap">
-          <h2 className="text-sm font-semibold text-slate-700">רשימת תיקים</h2>
+          <h2 className="text-sm font-semibold text-slate-700">רשימת לידות</h2>
           <div className="relative w-full sm:w-72">
             <Search size={15} className="absolute top-1/2 -translate-y-1/2 right-3 text-slate-400 pointer-events-none" />
             <input
@@ -309,7 +309,7 @@ export default function MaternityTable({ data }: { data: MaternityAid[] }) {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.length === 0 ? (
-                <tr><td colSpan={10} className="px-4 py-12 text-center text-slate-400">לא נמצאו תיקים בסינון זה</td></tr>
+                <tr><td colSpan={10} className="px-4 py-12 text-center text-slate-400">לא נמצאו לידות בסינון זה</td></tr>
               ) : filtered.map(aid => {
                 const m = aid.beneficiary as MotherRef | undefined
                 return (
