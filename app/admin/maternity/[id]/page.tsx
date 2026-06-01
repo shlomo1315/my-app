@@ -7,7 +7,7 @@ import Card from '@/components/ui/Card'
 import { StatusControl } from '../MaternityTable'
 import MaternityActions from './MaternityActions'
 import BackButton from '@/components/ui/BackButton'
-import { format } from 'date-fns'
+import { format, differenceInCalendarDays } from 'date-fns'
 import { he } from 'date-fns/locale'
 
 async function getAid(id: string): Promise<MaternityAid | null> {
@@ -101,6 +101,9 @@ export default async function MaternityDetailPage({ params }: { params: Promise<
           )}
           {aid.six_weeks_end && (
             <p className="text-sm"><span className="text-slate-500">6 שבועות לאחר הלידה: </span><span className="ltr-num text-indigo-600 font-medium">{fmtDate(aid.six_weeks_end)}</span></p>
+          )}
+          {aid.six_weeks_end && differenceInCalendarDays(new Date(aid.six_weeks_end), new Date()) > 0 && (
+            <p className="text-sm"><span className="text-slate-500">ימים שנותרו: </span><span className="font-medium text-amber-600">{differenceInCalendarDays(new Date(aid.six_weeks_end), new Date())} ימים</span></p>
           )}
         </Card>
 
