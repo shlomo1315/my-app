@@ -35,6 +35,7 @@ export default function AddUserButton() {
 
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<UserRole>('secretary')
   const [permissions, setPermissions] = useState<UserPermissions>(defaultPerms())
@@ -42,10 +43,13 @@ export default function AddUserButton() {
   const setSection = (key: SectionKey, level: PermissionLevel) =>
     setPermissions(p => ({ ...p, [key]: level }))
 
+  const setAllSections = (level: PermissionLevel) =>
+    setPermissions(Object.fromEntries(SECTIONS.map(s => [s.key, level])) as UserPermissions)
+
   const isAdmin = role === 'admin'
 
   const reset = () => {
-    setFullName(''); setEmail(''); setPassword(''); setRole('secretary')
+    setFullName(''); setEmail(''); setPhone(''); setPassword(''); setRole('secretary')
     setPermissions(defaultPerms())
     setError(''); setDone(false); setShowPw(false)
   }
@@ -59,7 +63,7 @@ export default function AddUserButton() {
       const res = await fetch('/api/admin/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ full_name: fullName, email, password, role, permissions: isAdmin ? {} : permissions }),
+        body: JSON.stringify({ full_name: fullName, email, phone, password, role, permissions: isAdmin ? {} : permissions }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'שגיאה ביצירת המשתמש'); setSaving(false); return }
@@ -106,6 +110,12 @@ export default function AddUserButton() {
                     className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
                 <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-slate-600">טלפון</label>
+                  <input value={phone} onChange={e => setPhone(e.target.value)}
+                    placeholder="05X-XXXXXXX" dir="ltr"
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-slate-600">סיסמה <span className="text-red-500">*</span> <span className="font-normal text-slate-400">(לפחות 6 תווים)</span></label>
                   <div className="relative">
                     <input type={showPw ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} dir="ltr"
@@ -131,9 +141,11 @@ export default function AddUserButton() {
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-semibold text-slate-700">הרשאות גישה למחלקות</label>
-                      <div className="flex gap-2 text-xs text-slate-400">
+                      <div className="flex gap-1.5 text-xs">
                         {LEVELS.map(l => (
-                          <span key={l.value} className={`px-1.5 py-0.5 rounded border text-[10px] font-medium ${l.color}`}>{l.label}</span>
+                          <button key={l.value} type="button" onClick={() => setAllSections(l.value)}
+                            title={`סמן הכל — ${l.label}`}
+                            className={`px-1.5 py-0.5 rounded border text-[10px] font-medium transition-opacity hover:opacity-70 ${l.color}`}>{l.label}</button>
                         ))}
                       </div>
                     </div>
