@@ -243,6 +243,7 @@ const searchHaystack = (a: MaternityAid) => {
 
 // ── Main table ──────────────────────────────────────────────────────────────────
 export default function MaternityTable({ data }: { data: MaternityAid[] }) {
+  const router = useRouter()
   const [filter, setFilter] = useState<Filter>('all')
   const [query, setQuery] = useState('')
 
@@ -313,7 +314,9 @@ export default function MaternityTable({ data }: { data: MaternityAid[] }) {
               ) : filtered.map(aid => {
                 const m = aid.beneficiary as MotherRef | undefined
                 return (
-                  <tr key={aid.id} className="hover:bg-slate-50">
+                  <tr key={aid.id}
+                    onClick={() => router.push(`/admin/maternity/${aid.id}`)}
+                    className="hover:bg-indigo-50/50 cursor-pointer transition-colors">
                     <td className="px-4 py-3 align-middle font-medium text-slate-800 whitespace-nowrap">{motherName(m)}</td>
                     <td className="px-4 py-3 align-middle text-xs font-mono text-slate-600"><span className="ltr-num">{m?.spouse_id_number ?? '—'}</span></td>
                     <td className="px-4 py-3 align-middle text-slate-700">{aid.baby_name ?? <span className="text-slate-300">—</span>}</td>
@@ -332,8 +335,8 @@ export default function MaternityTable({ data }: { data: MaternityAid[] }) {
                         <span className="text-slate-300">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 align-middle"><StatusControl aid={aid} /></td>
-                    <td className="px-4 py-3 align-middle">
+                    <td className="px-4 py-3 align-middle" onClick={e => e.stopPropagation()}><StatusControl aid={aid} /></td>
+                    <td className="px-4 py-3 align-middle" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center gap-2">
                         <Link href={`/admin/maternity/${aid.id}`}
                           className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 transition-colors">
