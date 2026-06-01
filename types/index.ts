@@ -7,6 +7,7 @@ export type EligibilityStatus = 'pending' | 'approved' | 'rejected' | 'review'
 export type Gender = 'male' | 'female'
 export type LoanStatus = 'pending' | 'approved' | 'active' | 'completed' | 'rejected' | 'defaulted'
 export type MaternityStatus = 'pending' | 'active' | 'completed' | 'cancelled'
+export type CardLoadStatus = 'idle' | 'pending' | 'loaded' | 'failed' | 'unloaded'
 export type DistributionStatus = 'planning' | 'active' | 'completed' | 'cancelled'
 export type DistributionRecipientStatus = 'pending' | 'received' | 'not_received'
 export type NotificationType = 'info' | 'warning' | 'urgent' | 'reminder'
@@ -112,6 +113,11 @@ export interface MaternityAid {
   card_balance: number
   card_loaded_at?: string
   card_expires_at?: string
+  card_load_status?: CardLoadStatus
+  card_load_amount?: number
+  card_tlush_id?: string
+  card_load_error?: string
+  card_unloaded_at?: string
   weekly_amount: number
   total_weeks: number
   recovery_home?: string
@@ -242,6 +248,14 @@ export const MATERNITY_STATUS_LABELS: Record<MaternityStatus, string> = {
   active: 'פעיל',
   completed: 'הושלם',
   cancelled: 'בוטל',
+}
+
+export const CARD_LOAD_STATUS_LABELS: Record<CardLoadStatus, string> = {
+  idle: 'לא הוטען',
+  pending: 'בתהליך…',
+  loaded: 'הוטען',
+  failed: 'נכשל',
+  unloaded: 'נפרק',
 }
 
 export const DISTRIBUTION_STATUS_LABELS: Record<DistributionStatus, string> = {

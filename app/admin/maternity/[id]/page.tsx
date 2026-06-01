@@ -2,10 +2,11 @@ import Link from 'next/link'
 import { ArrowRight, Baby, CreditCard, Home, FileText } from 'lucide-react'
 import { notFound } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/server'
-import { MaternityAid } from '@/types'
+import { MaternityAid, CARD_LOAD_STATUS_LABELS, type CardLoadStatus } from '@/types'
 import Card from '@/components/ui/Card'
 import { StatusControl } from '../MaternityTable'
 import MaternityActions from './MaternityActions'
+import LoadCardButton from './LoadCardButton'
 import BackButton from '@/components/ui/BackButton'
 import BirthCertificatePreview from './BirthCertificatePreview'
 import { format, differenceInCalendarDays } from 'date-fns'
@@ -27,6 +28,14 @@ async function getAid(id: string): Promise<MaternityAid | null> {
 }
 
 const fmtDate = (d?: string) => d ? format(new Date(d), 'dd/MM/yyyy', { locale: he }) : '—'
+
+const CARD_LOAD_CLS: Record<CardLoadStatus, string> = {
+  idle: 'bg-slate-100 text-slate-600',
+  pending: 'bg-amber-100 text-amber-700',
+  loaded: 'bg-green-100 text-green-700',
+  failed: 'bg-red-100 text-red-700',
+  unloaded: 'bg-slate-200 text-slate-700',
+}
 const fmtCur = (n: number) =>
   new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(n)
 
@@ -123,6 +132,24 @@ export default async function MaternityDetailPage({ params }: { params: Promise<
               תאריך פקיעה: {fmtDate(aid.card_expires_at)}
             </p>
           )}
+
+          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-100">
+            <span className="text-slate-500 text-sm">סטטוס הטענה:</span>
+            <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${CARD_LOAD_CLS[aid.card_load_status ?? 'idle']}`}>
+              {CARD_LOAD_STATUS_LABELS[aid.card_load_status ?? 'idle']}
+            </span>
+          </div>
+          {aid.card_loaded_at && (
+            <p className="text-xs text-slate-400 ltr-num">הוטען בתאריך: {fmtDate(aid.card_loaded_at)}</p>
+          )}
+          {aid.card_unloaded_at && (
+            <p className="text-xs text-slate-400 ltr-num">נפרק בתאריך: {fmtDate(aid.card_unloaded_at)}</p>
+          )}
+          {aid.card_load_status === 'failed' && aid.card_load_error && (
+            <p className="text-xs text-red-600">{aid.card_load_error}</p>
+          )}
+
+          <LoadCardButton aid={aid} />
         </Card>
       </div>
 
